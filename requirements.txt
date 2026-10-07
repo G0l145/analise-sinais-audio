@@ -1,0 +1,7 @@
+numpy>=2.0,<3
+scipy>=1.14,<2
+soundfile>=0.13,<0.15
+matplotlib>=3.9,<4
+pyloudnorm>=0.1.1,<0.3
+streamlit>=1.45,<2
+pandas>=2.2,<3
