@@ -9,6 +9,7 @@ import pandas as pd
 from . import __version__
 from .analysis import CENTERS, EDGES, centered
 from .dsp import Result
+from .quality import compare_indicators
 
 TARGET_NAMES = {
     "flat": "Mesma potência por banda de aproximadamente uma oitava",
@@ -81,6 +82,7 @@ def make_report(result: Result) -> dict:
             "tail_samples_not_analyzed": len(result.original.samples) - covered,
             "spectrogram_display_columns": len(result.before.frame_times),
         },
+        "spectral_indicators": compare_indicators(result.before, result.after),
         "metrics_before": result.before.stats,
         "metrics_after": result.after.stats,
         "relative_shape_rmse_before_db": result.error_before_db,

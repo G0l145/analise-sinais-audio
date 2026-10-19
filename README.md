@@ -18,6 +18,18 @@ A rotina executa os testes, gera o experimento em uma pasta temporária e verifi
 
 Para demonstrar o funcionamento: selecione **Demonstração pronta**, mantenha **Áudio de referência**, clique em **Analisar e equalizar** e ative **Modo de apresentação ao professor**. Não é necessário usar arquivos de terceiros.
 
+## Recursos experimentais v1.2
+
+A aba **Análise de sinais** inclui indicadores complementares (centroide, roll-off de 85%, flatness, dispersão e fator de crista). As medições também aparecem no relatório JSON. Não se interpretam como medida universal de qualidade musical.
+
+Para avaliar gravações reais, coloque apenas arquivos que você tem direito de processar na pasta local `audios-pessoais/` (ignorada pelo Git) e execute:
+
+```bash
+python -m signal_lab.benchmark audios-pessoais --out resultados/avaliacao-01.csv
+```
+
+Cada arquivo gera uma linha com medições ou descrição do erro. A entrada permanece intacta e o destino existente não é sobrescrito. Diferentes músicas não têm necessariamente a mesma curva-alvo desejável; compare os resultados por objetivo e contexto. **Nenhum corpus comercial de música acompanha o projeto.**
+
 ## Abrir no GitHub Codespaces
 
 1. Neste repositório, abra **Code → Codespaces → Create codespace on main**.

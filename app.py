@@ -13,6 +13,7 @@ from signal_lab.charts import band_figure, gains_figure, psd_figure, response_fi
 from signal_lab.demo import demo_pair
 from signal_lab.dsp import Settings, equalize
 from signal_lab.presentation import render_presentation
+from signal_lab.quality import compare_indicators
 from signal_lab.report import TARGET_NAMES, band_table, csv_bytes, improvement_percent, json_bytes, make_report
 
 st.set_page_config(page_title="Sinal · Análise e equalização de áudio", page_icon="🎛️", layout="wide")
@@ -190,6 +191,12 @@ else:
         ]
         st.dataframe(stats_rows, hide_index=True)
         st.caption("LUFS usa pyloudnorm e pode ser indisponível em silêncio ou trechos menores que 400 ms. A contagem em 0 dBFS é um indicador; não comprova sozinha distorção.")
+        st.subheader("Indicadores espectrais complementares")
+        indicators = compare_indicators(result.before, result.after)
+        st.dataframe([{"Indicador": key, "Antes": indicators["before"][key],
+                       "Depois": indicators["after"][key], "Variação": indicators["difference"][key]}
+                      for key in indicators["before"]], hide_index=True)
+        st.caption("Centroide, roll-off de 85%, dispersão e flatness descrevem o espectro; crest factor descreve pico/RMS. Diferenças não representam, isoladamente, melhoria perceptiva.")
     with correction:
         st.subheader("Ganhos realmente aplicados")
         show_figure(gains_figure(result))
