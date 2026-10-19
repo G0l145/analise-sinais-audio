@@ -65,13 +65,15 @@ with st.sidebar:
     target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda"}[x], key=f"target_{source}")
     if source == "Enviar áudio" and target == "reference":
         uploaded_reference = st.file_uploader("Arquivo de referência", type=["wav", "flac", "mp3"], key="reference_upload")
-    with st.form("equalization_controls"):
+    # Controles fora de st.form: cada alteração provoca um rerun e invalida
+    # imediatamente resultados anteriores até o clique em "Analisar".
+    with st.container():
         strength = st.slider("Intensidade da correção", 0.0, 1.0, 0.85 if source == "Demonstração pronta" else 0.65, 0.05, key=f"strength_{source}")
         with st.expander("Parâmetros dos filtros"):
             max_gain = st.slider("Limite por filtro (±dB)", 0.0, 6.0, 6.0, 0.5)
             q = st.slider("Fator de qualidade Q", 0.2, 5.0, 1.4, 0.1)
             ceiling = st.slider("Teto de pico de amostras (dBFS)", -12.0, -0.5, -1.0, 0.5)
-        submitted = st.form_submit_button("Analisar e equalizar", type="primary", use_container_width=True)
+        submitted = st.button("Analisar e equalizar", type="primary", use_container_width=True)
     rms_match = st.toggle("Igualar RMS na escuta A/B", value=True, key="rms_match")
     st.caption("A equalização modifica o equilíbrio espectral. A opção de RMS modifica somente as prévias de escuta.")
     st.divider()
