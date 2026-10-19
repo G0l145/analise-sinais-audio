@@ -15,8 +15,8 @@ class StreamingEQ:
             raise ValueError("SOS inválido.")
         if channels not in (1, 2):
             raise ValueError("Aceita mono ou estéreo.")
-        if not np.allclose(rows[:, 3], 1):
-            raise ValueError("Coeficientes SOS devem ter a0 = 1.")
+        if not np.all(rows[:, 3] == 1.0):
+            raise ValueError("Coeficientes SOS devem ter a0 = 1 exatamente.")
         self.sos = rows.copy()
         self.channels = channels
         self.zi = np.zeros((len(rows), 2, channels), dtype=np.float64)
