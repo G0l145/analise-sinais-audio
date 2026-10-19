@@ -4,6 +4,20 @@ Projeto para a disciplina **Análise de Sinais**: recebe um arquivo de áudio, m
 
 Inclui uma **apresentação ao professor em seis etapas**, com fórmulas, gráficos e um experimento reproduzível. A demonstração inicial é gerada pelo próprio programa; não exige baixar músicas.
 
+## Apresentação acadêmica e validação
+
+A **[proposta para apresentar ao professor](docs/PROPOSTA_ACADEMICA.md)** explica a ideia, o funcionamento planejado e o que já está implementado no protótipo. O **[roteiro detalhado](docs/APRESENTACAO.md)** organiza a demonstração em seis etapas.
+
+Antes da aula, com o ambiente preparado, execute:
+
+```bash
+python scripts/validar_apresentacao.py
+```
+
+A rotina executa os testes, gera o experimento em uma pasta temporária e verifica o áudio exportado, as medições, gráficos e relatórios. **Ela não substitui um ensaio no navegador e no equipamento de áudio**; também não comprova a disponibilidade do Codespaces na data da apresentação. Se alguma dependência estiver ausente, instale-a com `python -m pip install -r requirements-dev.txt`.
+
+Para demonstrar o funcionamento: selecione **Demonstração pronta**, mantenha **Áudio de referência**, clique em **Analisar e equalizar** e ative **Modo de apresentação ao professor**. Não é necessário usar arquivos de terceiros.
+
 ## Abrir no GitHub Codespaces
 
 1. Neste repositório, abra **Code → Codespaces → Create codespace on main**.
