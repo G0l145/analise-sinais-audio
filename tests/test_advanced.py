@@ -51,3 +51,10 @@ def test_stream_rejects_invalid_shape_and_non_finite():
         engine.process(np.zeros(16))
     with pytest.raises(ValueError):
         engine.process(np.full((16, 1), np.nan))
+
+
+def test_stream_rejects_a0_close_but_not_exact():
+    sos = design_filter(FilterSpec(), 44100).copy()
+    sos[0, 3] = 1.000001
+    with pytest.raises(ValueError, match="exatamente"):
+        StreamingEQ(sos, 1)
