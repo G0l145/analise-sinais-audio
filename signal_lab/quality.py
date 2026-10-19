@@ -31,9 +31,14 @@ def spectral_indicators(analysis: Analysis) -> dict[str, float | None]:
     rolloff = float(bands[min(len(bands) - 1,
                              int(np.searchsorted(np.cumsum(energy), 0.85 * total)))])
     mean = float(np.mean(energy))
-    # Um piso absoluto preserva a representação de valores nulos no espectro.
-    flatness = float(np.exp(np.mean(np.log(np.maximum(energy, 1e-30)))) / mean)
-    flatness = min(1.0, max(0.0, flatness))
+    # Flatness é a média geométrica sobre a aritmética. Um piso absoluto
+    # alteraria essa razão ao atenuar o sinal, mesmo sem mudar sua forma.
+    # Bins exatamente nulos implicam média geométrica zero.
+    if np.any(energy == 0):
+        flatness = 0.0
+    else:
+        flatness = float(np.exp(np.mean(np.log(energy / mean))))
+        flatness = min(1.0, max(0.0, flatness))
     return {
         "spectral_centroid_hz": centroid,
         "spectral_rolloff_85_hz": rolloff,
