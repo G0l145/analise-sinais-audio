@@ -2,6 +2,7 @@
 
 Esta atualização preserva o algoritmo STFT/IIR existente e melhora a segurança operacional da interface:
 
+- Os controles de processamento são reativos (fora de `st.form`), permitindo identificar alterações imediatamente.
 - A alteração de parâmetros ou do arquivo de entrada suspende a exibição e os downloads até a próxima análise confirmada.
 - Uma nova análise que falha descarta o resultado anterior para evitar associações incorretas.
 - As prévias WAV são reutilizadas durante a navegação na mesma sessão, sendo recalculadas se mudar o resultado ou a configuração de comparação RMS.
