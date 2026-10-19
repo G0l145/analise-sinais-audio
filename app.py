@@ -99,7 +99,12 @@ if submitted or "result" not in st.session_state:
             st.session_state["reference"] = reference
             st.session_state["signature"] = signature
     except (ValueError, OSError) as exc:
-        st.error(str(exc))
+        # Nunca associar o resultado anterior a uma nova entrada que falhou.
+        for key in ("result", "reference", "signature",
+                    "_preview_cache_result", "_preview_cache_rms", "_preview_cache_audio"):
+            st.session_state.pop(key, None)
+        st.error(f"Não foi possível concluir a análise: {exc}")
+        st.stop()
 
 if "result" not in st.session_state:
     st.info("Selecione a demonstração ou envie um arquivo para iniciar.")
@@ -108,14 +113,25 @@ if "result" not in st.session_state:
 result = st.session_state["result"]
 reference = st.session_state.get("reference")
 if signature != st.session_state["signature"]:
-    st.info("Os controles ou arquivos foram alterados. Clique em “Analisar e equalizar” para atualizar. Os resultados abaixo pertencem à última análise concluída.")
+    st.warning("Os controles ou arquivos foram alterados. Clique em “Analisar e equalizar” para gerar um resultado correspondente. A análise anterior permanece guardada, mas não será exibida nem exportada.")
+    st.stop()
 st.caption(f"RESULTADO ATUAL · {result.original.name} · {result.original.duration:.2f} s · {result.original.sample_rate:,} Hz · {result.original.channels} canal(is)".replace(",", "."))
 
-if rms_match:
-    preview_before, preview_after = matched_pair(result.original, result.processed)
-else:
-    preview_before, preview_after = safe_preview(result.original), safe_preview(result.processed)
-before_audio, after_audio = wav_bytes(preview_before), wav_bytes(preview_after)
+# Os botões de navegação e a apresentação causam novas execuções do script.
+# Guardar as prévias na sessão evita recodificar WAV a cada interação;
+# a troca do resultado ou da opção RMS invalida este cache.
+if (st.session_state.get("_preview_cache_result") is not result
+        or st.session_state.get("_preview_cache_rms") != rms_match):
+    if rms_match:
+        preview_before, preview_after = matched_pair(result.original, result.processed)
+    else:
+        preview_before, preview_after = safe_preview(result.original), safe_preview(result.processed)
+    st.session_state["_preview_cache_audio"] = (
+        wav_bytes(preview_before), wav_bytes(preview_after)
+    )
+    st.session_state["_preview_cache_result"] = result
+    st.session_state["_preview_cache_rms"] = rms_match
+before_audio, after_audio = st.session_state["_preview_cache_audio"]
 presentation_mode = st.toggle("Modo de apresentação ao professor", key="presentation_mode")
 
 if presentation_mode:
