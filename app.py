@@ -53,17 +53,25 @@ def upload_hash(upload):
 with st.sidebar:
     st.title("🎛️ Sinal")
     st.caption("ANÁLISE DE SINAIS · PROJETO ACADÊMICO")
-    source = st.radio("Fonte do áudio", ["Demonstração pronta", "Enviar áudio"], key="audio_source")
+    source = st.radio("Fonte do áudio", ["Demonstração pronta", "Enviar áudio", "Gravar áudio"], key="audio_source")
     uploaded = None
     uploaded_reference = None
     if source == "Enviar áudio":
         uploaded = st.file_uploader("Arquivo de entrada", type=["wav", "flac", "mp3"], key="input_upload")
         st.caption("Até 50 MB e 5 minutos; mono/estéreo. A taxa deve estar entre 8 e 96 kHz; limite adicional de 14,4 milhões de amostras por canal.")
+    elif source == "Gravar áudio":
+        uploaded = st.audio_input("Gravar pelo microfone", key="microphone_recording")
+        st.caption("Permita o microfone, inicie e encerre a gravação. Depois, escolha a curva-alvo e clique em “Analisar e equalizar”. Limite de 5 minutos e 50 MB.")
+        with st.expander("Ajuda com o microfone"):
+            st.write("Abra o aplicativo em HTTPS ou localhost. No Codespaces, use “Open in Browser” na porta 8501. Se não conseguir gravar, libere o microfone nas permissões do navegador e do sistema operacional e verifique o dispositivo selecionado.")
+        if uploaded is not None:
+            st.success("Gravação pronta para análise. Você pode ouvi-la no gravador antes de equalizar.")
+            st.download_button("↓ Gravação original · WAV", uploaded.getvalue(), file_name="gravacao_microfone.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
     else:
         st.caption("Trecho sintético original de 12 segundos, com graves realçados e referência conhecida. Funciona sem enviar arquivos.")
     modes = ["reference", "gentle", "flat"] if source == "Demonstração pronta" else ["gentle", "flat", "reference"]
     target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda"}[x], key=f"target_{source}")
-    if source == "Enviar áudio" and target == "reference":
+    if source != "Demonstração pronta" and target == "reference":
         uploaded_reference = st.file_uploader("Arquivo de referência", type=["wav", "flac", "mp3"], key="reference_upload")
     with st.form("equalization_controls"):
         strength = st.slider("Intensidade da correção", 0.0, 1.0, 0.85 if source == "Demonstração pronta" else 0.65, 0.05, key=f"strength_{source}")
@@ -75,20 +83,22 @@ with st.sidebar:
     rms_match = st.toggle("Igualar RMS na escuta A/B", value=True, key="rms_match")
     st.caption("A equalização modifica o equilíbrio espectral. A opção de RMS modifica somente as prévias de escuta.")
     st.divider()
-    st.caption("Os arquivos enviados são processados no ambiente que executa o aplicativo. Não são enviados ao GitHub. A aplicação não grava esses arquivos em disco.")
+    st.caption("Arquivos enviados e gravações são processados no ambiente que executa o aplicativo. Não são enviados ao GitHub. A aplicação não grava esses áudios em disco.")
 
 settings = Settings(target=target, strength=strength, max_gain_db=max_gain, q=q, ceiling_dbfs=ceiling)
 signature = (source, upload_hash(uploaded), upload_hash(uploaded_reference), settings)
 
-if submitted or "result" not in st.session_state:
+if submitted or (source == "Demonstração pronta" and "result" not in st.session_state):
     try:
         with st.spinner("Medindo o espectro, aplicando os filtros e validando a saída…"):
             if source == "Demonstração pronta":
                 audio, reference = demo_pair()
             else:
                 if uploaded is None:
+                    if source == "Gravar áudio":
+                        raise ValueError("Grave e encerre um áudio pelo microfone antes de iniciar a análise.")
                     raise ValueError("Envie um arquivo de áudio antes de iniciar a análise.")
-                audio = read_audio(uploaded.getvalue(), uploaded.name)
+                audio = read_audio(uploaded.getvalue(), "gravacao_microfone.wav" if source == "Gravar áudio" else uploaded.name)
                 reference = None
                 if settings.target == "reference":
                     if uploaded_reference is None:
@@ -102,13 +112,13 @@ if submitted or "result" not in st.session_state:
         st.error(str(exc))
 
 if "result" not in st.session_state:
-    st.info("Selecione a demonstração ou envie um arquivo para iniciar.")
+    st.info("Selecione a demonstração, envie um arquivo ou grave um áudio pelo microfone para iniciar.")
     st.stop()
 
 result = st.session_state["result"]
 reference = st.session_state.get("reference")
 if signature != st.session_state["signature"]:
-    st.info("Os controles ou arquivos foram alterados. Clique em “Analisar e equalizar” para atualizar. Os resultados abaixo pertencem à última análise concluída.")
+    st.info("A fonte, os controles ou o áudio foram alterados. Clique em “Analisar e equalizar” para atualizar. Os resultados abaixo pertencem à última análise concluída.")
 st.caption(f"RESULTADO ATUAL · {result.original.name} · {result.original.duration:.2f} s · {result.original.sample_rate:,} Hz · {result.original.channels} canal(is)".replace(",", "."))
 
 if rms_match:
