@@ -66,6 +66,7 @@ with st.sidebar:
             st.write("Abra o aplicativo em HTTPS ou localhost. No Codespaces, use “Open in Browser” na porta 8501. Se não conseguir gravar, libere o microfone nas permissões do navegador e do sistema operacional e verifique o dispositivo selecionado.")
         if uploaded is not None:
             st.success("Gravação pronta para análise. Você pode ouvi-la no gravador antes de equalizar.")
+            st.download_button("↓ Gravação original · WAV", uploaded.getvalue(), file_name="gravacao_microfone.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
     else:
         st.caption("Trecho sintético original de 12 segundos, com graves realçados e referência conhecida. Funciona sem enviar arquivos.")
     modes = ["reference", "gentle", "flat"] if source == "Demonstração pronta" else ["gentle", "flat", "reference"]

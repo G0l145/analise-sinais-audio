@@ -72,9 +72,12 @@ Os controles podem ser alterados sem substituir o resultado anterior. A interfac
 
 ### Gravar e equalizar pelo microfone
 
+O [roteiro de testes de captura e equalização](docs/TESTE_GRAVACAO.md) contém os comandos do Codespaces, o ensaio pelo computador/celular e amostras sintéticas para conferência.
+
 1. Em **Fonte do áudio**, selecione **Gravar áudio**.
 2. No gravador **Gravar pelo microfone**, permita o acesso ao microfone no navegador e inicie a captura.
 3. Encerre a gravação e confira o áudio no próprio gravador.
+   Use **Gravação original · WAV** para baixar uma cópia antes da equalização.
 4. Escolha a curva-alvo e clique em **Analisar e equalizar**. Para **Áudio de referência**, envie também o arquivo de referência.
 5. Compare **A · Antes** e **B · Depois** e baixe **Áudio equalizado · WAV** na aba **Visão geral**.
 

@@ -75,7 +75,8 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     assert result.original.sample_rate == 16_000
     assert result.original.samples.shape == result.processed.samples.shape
     assert result.error_after_db <= result.error_before_db + 1e-8
-    assert len(app.get("download_button")) == 3
+    assert len(app.get("download_button")) == 4
+    assert any(button.proto.label == "↓ Gravação original · WAV" for button in app.get("download_button"))
     previous_signature = app.session_state["signature"]
     recording = microphone_wav(seed=43)
     app.run()
