@@ -1,6 +1,6 @@
 # Sinal — análise e equalização automática de áudio
 
-Projeto para a disciplina **Análise de Sinais**: recebe um arquivo de áudio, mede o espectro por STFT, calcula uma correção em dez bandas, aplica filtros digitais e compara o resultado com um alvo explícito.
+Projeto para a disciplina **Análise de Sinais**: recebe um arquivo de áudio ou uma gravação pelo microfone, mede o espectro por STFT, calcula uma correção em dez bandas, aplica filtros digitais e compara o resultado com um alvo explícito.
 
 Inclui uma **apresentação ao professor em seis etapas**, com fórmulas, gráficos e um experimento reproduzível. A demonstração inicial é gerada pelo próprio programa; não exige baixar músicas.
 
@@ -57,6 +57,7 @@ python3 -m venv .venv
 
 | Área | Recursos |
 |---|---|
+| Entrada | Demonstração sintética, upload de arquivo ou gravação pelo microfone do navegador |
 | Visão geral | Erro antes/depois, redução percentual, bandas usadas, curva-alvo e escuta A/B |
 | Análise de sinais | Forma de onda, PSD média, espectrogramas na mesma escala, RMS, pico e LUFS |
 | Equalização | Ganhos aplicados, tabela por banda, resposta da cascata e coeficientes SOS |
@@ -68,6 +69,18 @@ python3 -m venv .venv
 Selecione **Enviar áudio**, escolha um WAV/FLAC/MP3 e a curva-alvo. O modo **Áudio de referência** exige também um arquivo de referência. Clique em **Analisar e equalizar**.
 
 Os controles podem ser alterados sem substituir o resultado anterior. A interface informa quando é necessário executar uma nova análise. O aplicativo mantém o áudio da sessão em memória; não grava uploads em disco nem os envia ao repositório. No Codespaces, o processamento acontece no servidor remoto do Codespace.
+
+### Gravar e equalizar pelo microfone
+
+1. Em **Fonte do áudio**, selecione **Gravar áudio**.
+2. No gravador **Gravar pelo microfone**, permita o acesso ao microfone no navegador e inicie a captura.
+3. Encerre a gravação e confira o áudio no próprio gravador.
+4. Escolha a curva-alvo e clique em **Analisar e equalizar**. Para **Áudio de referência**, envie também o arquivo de referência.
+5. Compare **A · Antes** e **B · Depois** e baixe **Áudio equalizado · WAV** na aba **Visão geral**.
+
+A captura usa o microfone do computador ou celular que abriu o navegador, inclusive quando o aplicativo roda no Codespaces. Abra a porta por **Open in Browser**, em HTTPS; localmente, use `localhost`. Caso o navegador bloqueie a captura, verifique as permissões de microfone do site e do sistema operacional e o dispositivo de entrada selecionado.
+
+A gravação passa pela mesma validação de tamanho, duração, canais e taxa dos arquivos enviados. A equalização ocorre após encerrar a gravação e solicitar a análise. Uma nova gravação exige clicar novamente em **Analisar e equalizar**; enquanto isso, os resultados anteriores ficam identificados como pertencentes à última análise. O áudio capturado é transferido para o ambiente que executa o aplicativo e mantido em memória, sem salvamento em disco pelo aplicativo e sem envio ao GitHub. A taxa e os canais efetivamente recebidos aparecem no resultado; bandas fora da faixa mensurável não recebem correção.
 
 **Limites:** até 50 MB; até 300 segundos; até 14,4 milhões de amostras por canal; um ou dois canais; taxa entre 8 e 96 kHz. Os limites se aplicam simultaneamente: em 96 kHz, a quantidade máxima de amostras restringe a duração a 150 segundos. A leitura de MP3 depende do suporte da versão de libsndfile instalada. WAV e FLAC são preferíveis para o experimento.
 
@@ -114,7 +127,7 @@ Os testes verificam potência STFT, canais em oposição de fase, resposta dos b
 - Filtros **peaking IIR biquad** em cascata SOS. O MVP utiliza peaking nas dez bandas, inclusive nos extremos; não implementa shelving.
 - Atenuação global para limitar **pico de amostras**. Não é um limitador de true peak e não recupera clipping preexistente.
 - LUFS integrado pelo pyloudnorm; pode ser indisponível em silêncio ou trechos menores que 400 ms. Não há normalização de loudness da saída.
-- Processamento offline de arquivos. Não há captura de microfone, processamento em tempo real ou calibração de caixas/fones.
+- Processamento offline de arquivos ou de gravações concluídas no navegador. Não há equalização em tempo real nem calibração de caixas/fones.
 
 Veja [METODOLOGIA.md](docs/METODOLOGIA.md) e [APRESENTACAO.md](docs/APRESENTACAO.md) para a explicação dos cálculos e o roteiro da demonstração.
 
@@ -124,6 +137,7 @@ Veja [METODOLOGIA.md](docs/METODOLOGIA.md) e [APRESENTACAO.md](docs/APRESENTACAO
 - [SciPy — sosfilt](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.sosfilt.html): aplicação de filtros em seções de segunda ordem.
 - [pyloudnorm — documentação e código](https://github.com/csteinmetz1/pyloudnorm): medição de loudness integrado.
 - [Streamlit — st.audio](https://docs.streamlit.io/develop/api-reference/media/st.audio): reprodução na interface.
+- [Streamlit — st.audio_input](https://docs.streamlit.io/develop/api-reference/widgets/st.audio_input): captura do microfone pelo navegador.
 
 ## Organização
 
