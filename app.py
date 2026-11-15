@@ -81,6 +81,7 @@ with st.sidebar:
     st.divider()
     st.caption("Arquivos enviados e gravações são processados no ambiente que executa o aplicativo. Não são enviados ao GitHub. A aplicação não grava esses áudios em disco.")
 
+record_submit = False
 if source == "Gravar áudio":
     st.subheader("🎙️ Gravação de voz")
     st.caption("Clique para iniciar e encerrar. A primeira captura pode exigir permissão do navegador. A gravação é concluída no dispositivo antes do processamento no servidor.")
@@ -88,9 +89,14 @@ if source == "Gravar áudio":
     with st.expander("Permissões e eventuais atrasos na captura"):
         st.write("Use HTTPS ou localhost, conceda permissão ao microfone e confirme o dispositivo de entrada. No celular, abra a porta 8501 do Codespaces em uma guia do navegador. O tempo de inicialização do microfone depende também do navegador e não pode ser eliminado pelo processamento de áudio.")
     if uploaded is not None:
-        st.success("Gravação concluída. Selecione Voz nítida na barra lateral e clique em Analisar e equalizar.")
+        st.success("Gravação concluída. Voz nítida está selecionada por padrão; você pode alterar o modo na barra lateral.")
         st.download_button("↓ Gravação original · WAV", uploaded.getvalue(), file_name="gravacao_microfone.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
+    # Controle de processamento próximo ao gravador, sem exigir reabrir a barra lateral no celular.
+    record_submit = st.button("Processar gravação no equalizador", type="primary",
+                              disabled=uploaded is None, use_container_width=True,
+                              key="microphone_process")
 
+submitted = submitted or record_submit
 settings = Settings(target=target, strength=strength, max_gain_db=max_gain, q=q, ceiling_dbfs=ceiling)
 signature = (source, upload_hash(uploaded), upload_hash(uploaded_reference), settings)
 
