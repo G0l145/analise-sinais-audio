@@ -21,7 +21,7 @@ def parser():
     run = sub.add_parser("equalize", help="Processar um arquivo sem alterar a entrada")
     run.add_argument("input", type=Path)
     run.add_argument("--reference", type=Path)
-    run.add_argument("--target", choices=["flat", "gentle", "reference"], default="gentle")
+    run.add_argument("--target", choices=["flat", "gentle", "reference", "voice"], default="gentle")
     run.add_argument("--strength", type=float, default=0.65)
     run.add_argument("--out", type=Path, default=Path("resultados/audio"))
     return root
