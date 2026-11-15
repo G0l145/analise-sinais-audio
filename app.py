@@ -32,7 +32,7 @@ h2 {letter-spacing:-.4px;}
 <div class="hero">
   <div class="eyebrow">SINAL / LABORATÓRIO DE ÁUDIO</div>
   <h1>Entenda o som.<br>Compare a transformação.</h1>
-  <p>Análise espectral e equalização automática por dez bandas, com gráficos, escuta comparativa e critérios verificáveis.</p>
+  <p>Análise espectral, equalização e tratamento de voz gravada com redução moderada de ruído e escuta comparativa.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -60,17 +60,13 @@ with st.sidebar:
         uploaded = st.file_uploader("Arquivo de entrada", type=["wav", "flac", "mp3"], key="input_upload")
         st.caption("Até 50 MB e 5 minutos; mono/estéreo. A taxa deve estar entre 8 e 96 kHz; limite adicional de 14,4 milhões de amostras por canal.")
     elif source == "Gravar áudio":
-        uploaded = st.audio_input("Gravar pelo microfone", key="microphone_recording")
-        st.caption("Permita o microfone, inicie e encerre a gravação. Depois, escolha a curva-alvo e clique em “Analisar e equalizar”. Limite de 5 minutos e 50 MB.")
-        with st.expander("Ajuda com o microfone"):
-            st.write("Abra o aplicativo em HTTPS ou localhost. No Codespaces, use “Open in Browser” na porta 8501. Se não conseguir gravar, libere o microfone nas permissões do navegador e do sistema operacional e verifique o dispositivo selecionado.")
-        if uploaded is not None:
-            st.success("Gravação pronta para análise. Você pode ouvi-la no gravador antes de equalizar.")
-            st.download_button("↓ Gravação original · WAV", uploaded.getvalue(), file_name="gravacao_microfone.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
+        st.caption("Use o gravador na página principal. Depois de encerrar a captura, clique em Analisar e equalizar.")
     else:
         st.caption("Trecho sintético original de 12 segundos, com graves realçados e referência conhecida. Funciona sem enviar arquivos.")
-    modes = ["reference", "gentle", "flat"] if source == "Demonstração pronta" else ["gentle", "flat", "reference"]
-    target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda"}[x], key=f"target_{source}")
+    modes = (["reference", "gentle", "flat"] if source == "Demonstração pronta"
+             else ["voice", "gentle", "flat", "reference"] if source == "Gravar áudio"
+             else ["gentle", "voice", "flat", "reference"])
+    target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda", "voice": "Voz nítida · limpeza e realce"}[x], key=f"target_{source}")
     if source != "Demonstração pronta" and target == "reference":
         uploaded_reference = st.file_uploader("Arquivo de referência", type=["wav", "flac", "mp3"], key="reference_upload")
     with st.form("equalization_controls"):
@@ -85,12 +81,22 @@ with st.sidebar:
     st.divider()
     st.caption("Arquivos enviados e gravações são processados no ambiente que executa o aplicativo. Não são enviados ao GitHub. A aplicação não grava esses áudios em disco.")
 
+if source == "Gravar áudio":
+    st.subheader("🎙️ Gravação de voz")
+    st.caption("Clique para iniciar e encerrar. A primeira captura pode exigir permissão do navegador. A gravação é concluída no dispositivo antes do processamento no servidor.")
+    uploaded = st.audio_input("Gravar pelo microfone", sample_rate=16_000, key="microphone_recording")
+    with st.expander("Permissões e eventuais atrasos na captura"):
+        st.write("Use HTTPS ou localhost, conceda permissão ao microfone e confirme o dispositivo de entrada. No celular, abra a porta 8501 do Codespaces em uma guia do navegador. O tempo de inicialização do microfone depende também do navegador e não pode ser eliminado pelo processamento de áudio.")
+    if uploaded is not None:
+        st.success("Gravação concluída. Selecione Voz nítida na barra lateral e clique em Analisar e equalizar.")
+        st.download_button("↓ Gravação original · WAV", uploaded.getvalue(), file_name="gravacao_microfone.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
+
 settings = Settings(target=target, strength=strength, max_gain_db=max_gain, q=q, ceiling_dbfs=ceiling)
 signature = (source, upload_hash(uploaded), upload_hash(uploaded_reference), settings)
 
 if submitted or (source == "Demonstração pronta" and "result" not in st.session_state):
     try:
-        with st.spinner("Medindo o espectro, aplicando os filtros e validando a saída…"):
+        with st.spinner("Tratando o áudio e validando a saída…" if target == "voice" else "Medindo o espectro, aplicando os filtros e validando a saída…"):
             if source == "Demonstração pronta":
                 audio, reference = demo_pair()
             else:
@@ -121,11 +127,16 @@ if signature != st.session_state["signature"]:
     st.info("A fonte, os controles ou o áudio foram alterados. Clique em “Analisar e equalizar” para atualizar. Os resultados abaixo pertencem à última análise concluída.")
 st.caption(f"RESULTADO ATUAL · {result.original.name} · {result.original.duration:.2f} s · {result.original.sample_rate:,} Hz · {result.original.channels} canal(is)".replace(",", "."))
 
-if rms_match:
-    preview_before, preview_after = matched_pair(result.original, result.processed)
-else:
-    preview_before, preview_after = safe_preview(result.original), safe_preview(result.processed)
-before_audio, after_audio = wav_bytes(preview_before), wav_bytes(preview_after)
+# Não reprocessar e reserializar os WAVs a cada interação com a interface.
+preview_key = (st.session_state["signature"], rms_match)
+if st.session_state.get("preview_key") != preview_key:
+    if rms_match:
+        preview_before, preview_after = matched_pair(result.original, result.processed)
+    else:
+        preview_before, preview_after = safe_preview(result.original), safe_preview(result.processed)
+    st.session_state["preview_wavs"] = (wav_bytes(preview_before), wav_bytes(preview_after))
+    st.session_state["preview_key"] = preview_key
+before_audio, after_audio = st.session_state["preview_wavs"]
 presentation_mode = st.toggle("Modo de apresentação ao professor", key="presentation_mode")
 
 if presentation_mode:
@@ -141,6 +152,8 @@ else:
         c.metric("Redução do erro", formatted(percentage, "%", 1))
         d.metric("Bandas usadas", f"{np.count_nonzero(result.mask)}/10")
         st.caption(TARGET_NAMES[result.settings.target] + (f" · {result.reference_name}" if result.reference_name else ""))
+        if result.settings.target == "voice":
+            st.info("Neste modo, a eficácia deve ser avaliada pela escuta A/B. O erro RMSE de uma curva-alvo musical não mede clareza da fala.")
         show_figure(band_figure(result))
         st.caption("Potências das bandas centralizadas na respectiva média; o erro RMSE avalia a forma do espectro e não o volume global.")
         st.subheader("Escuta comparativa")
@@ -152,6 +165,8 @@ else:
             st.markdown("**B · Depois da equalização**")
             st.audio(after_audio, format="audio/wav")
         st.caption("Prévias com RMS igualado e proteção de pico." if rms_match else "Prévias com proteção de pico; os volumes podem ser diferentes.")
+        if result.settings.target == "voice":
+            st.caption("O processamento reduz parte do ruído constante e realça frequências da fala, mas não recupera trechos sem voz ou distorcidos.")
         if reference is not None and result.settings.target == "reference":
             with st.expander("Ouvir a referência usada no experimento"):
                 st.audio(wav_bytes(safe_preview(reference)), format="audio/wav")
@@ -187,6 +202,8 @@ else:
         show_figure(gains_figure(result))
         st.dataframe(band_table(result), hide_index=True)
         st.caption("Bandas excluídas recebem ganho zero e valores relativos indisponíveis. Cada filtro é limitado a ±6 dB; a soma das respostas pode exceder esse valor.")
+        if result.settings.target == "voice":
+            st.caption("A tabela apresenta os ganhos de presença; a limpeza de ruído utiliza também uma máscara espectral adaptativa.")
         st.subheader("Resposta dos filtros em cascata")
         show_figure(response_figure(result))
         st.write(f"**Atenuação global para proteção de pico:** {result.attenuation_db:.2f} dB.")
