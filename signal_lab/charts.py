@@ -34,7 +34,8 @@ def band_figure(result: Result):
     fig, (ax,) = figure()
     x = np.arange(10)
     ax.plot(x, centered(result.before.band_db, result.mask), "o-", color=BEFORE, label="Antes", linewidth=2)
-    ax.plot(x, result.target_db, "--", color=TARGET, label="Alvo", linewidth=1.8)
+    if result.settings.target != "voice":
+        ax.plot(x, result.target_db, "--", color=TARGET, label="Alvo", linewidth=1.8)
     ax.plot(x, centered(result.after.band_db, result.mask), "o-", color=AFTER, label="Depois", linewidth=2)
     ax.set_xticks(x, LABELS)
     ax.set_xlabel("Frequência central da banda (Hz)")
