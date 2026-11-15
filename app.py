@@ -75,7 +75,7 @@ with st.sidebar:
             max_gain = st.slider("Limite por filtro (±dB)", 0.0, 6.0, 6.0, 0.5)
             q = st.slider("Fator de qualidade Q", 0.2, 5.0, 1.4, 0.1)
             ceiling = st.slider("Teto de pico de amostras (dBFS)", -12.0, -0.5, -1.0, 0.5)
-        submitted = st.form_submit_button("Analisar e equalizar", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Analisar e equalizar", type="primary", use_container_width=True, key="run_equalizer")
     rms_match = st.toggle("Igualar RMS na escuta A/B", value=True, key="rms_match")
     st.caption("A equalização modifica o equilíbrio espectral. A opção de RMS modifica somente as prévias de escuta.")
     st.divider()
