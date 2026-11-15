@@ -71,10 +71,13 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     assert not app.error
     result = app.session_state["result"]
     assert result.original.name == "gravacao_microfone.wav"
-    assert result.settings.target == "gentle"
+    assert result.settings.target == "voice"
+    assert result.error_before_db is None
+    assert result.error_after_db is None
     assert result.original.sample_rate == 16_000
     assert result.original.samples.shape == result.processed.samples.shape
-    assert result.error_after_db <= result.error_before_db + 1e-8
+    assert np.isfinite(result.processed.samples).all()
+    assert any("redução" in note for note in result.notes)
     assert len(app.get("download_button")) == 4
     assert any(button.proto.label == "↓ Gravação original · WAV" for button in app.get("download_button"))
     previous_signature = app.session_state["signature"]
