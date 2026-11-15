@@ -14,6 +14,7 @@ TARGET_NAMES = {
     "flat": "Mesma potência por banda de aproximadamente uma oitava",
     "gentle": "Potência por banda com inclinação de -1 dB por oitava",
     "reference": "Forma espectral de um áudio de referência",
+    "voice": "Tratamento de fala: redução de ruído e realce da faixa de presença",
 }
 
 
