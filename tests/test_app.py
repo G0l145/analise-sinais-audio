@@ -66,7 +66,7 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
-    app.button(key="run_equalizer").click().run()
+    app.button(key="microphone_process").click().run()
     assert not app.exception
     assert not app.error
     result = app.session_state["result"]
@@ -85,7 +85,7 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     app.run()
     assert app.session_state["result"] is result
     assert any("última análise concluída" in info.value for info in app.info)
-    app.button(key="run_equalizer").click().run()
+    app.button(key="microphone_process").click().run()
     assert not app.exception
     assert app.session_state["signature"] != previous_signature
     assert not np.array_equal(app.session_state["result"].original.samples, result.original.samples)
