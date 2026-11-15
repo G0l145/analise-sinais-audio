@@ -7,6 +7,7 @@ from scipy.signal import sosfilt, sosfreqz
 
 from .audio import Audio
 from .analysis import Analysis, CENTERS, analyze, centered
+from .voice import clean_voice
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,7 @@ class Settings:
         numeric = [self.strength, self.max_gain_db, self.q, self.ceiling_dbfs]
         if not np.isfinite(numeric).all():
             raise ValueError("Os parâmetros devem ser finitos.")
-        if self.target not in {"flat", "gentle", "reference"}:
+        if self.target not in {"flat", "gentle", "reference", "voice"}:
             raise ValueError("Curva-alvo desconhecida.")
         if not 0 <= self.strength <= 1 or not 0 <= self.max_gain_db <= 6:
             raise ValueError("A intensidade deve estar entre 0 e 1 e o limite entre 0 e 6 dB.")
@@ -90,8 +91,58 @@ class Result:
     notes: list[str] = field(default_factory=list)
 
 
+def equalize_voice(audio: Audio, settings: Settings) -> Result:
+    """Reduz ruído e realça presença da fala sem usar o alvo musical de dez bandas.
+
+    Para este modo, a métrica de erro espectral contra curva-alvo não se aplica.
+    Os filtros lineares são representados por SOS; a máscara de ruído é não linear.
+    """
+    before = analyze(audio)
+    cleaned, conditioning_sos = clean_voice(audio, settings.strength)
+    # Atenuar médio-graves e destacar presença em aproximadamente 2–4 kHz.
+    voice_profile = np.array([0., 0., -1., -1., -0.8, 0.5, 2.5, 1.3, -0.8, 0.])
+    gains = np.clip(voice_profile * settings.strength,
+                    -settings.max_gain_db, settings.max_gain_db)
+    eq_sos = build_sos(gains, audio.sample_rate, settings.q)
+    samples = sosfilt(eq_sos, cleaned, axis=0)
+    # Recuperar parcialmente a intensidade da fala, sem amplificação excessiva.
+    rms_before = float(np.sqrt(np.mean(audio.samples ** 2)))
+    rms_after = float(np.sqrt(np.mean(samples ** 2)))
+    if settings.strength > 0 and rms_before > 1e-4 and rms_after > 1e-7:
+        samples *= min(2.0, max(1.0, 1.05 * rms_before / rms_after))
+    peak = float(np.max(np.abs(samples)))
+    ceiling = 10 ** (settings.ceiling_dbfs / 20)
+    scale = min(1.0, ceiling / peak) if peak else 1.0
+    processed = Audio(samples * scale, audio.sample_rate, f"{audio.name}_voz_nitida")
+    after = analyze(processed)
+    notes = [
+        "Modo de voz: redução moderada de ruído estacionário e realce de inteligibilidade.",
+        "Não realiza isolamento neural da voz nem remove com garantia eco, reverberação, ruído impulsivo ou clipping.",
+        "O erro RMSE contra curva-alvo musical não se aplica ao tratamento de voz.",
+        "A resposta em frequência mostra somente os filtros lineares, não a máscara de redução de ruído.",
+        "O teto é de pico de amostras, não true peak.",
+    ]
+    attenuation = float(20 * np.log10(scale))
+    if attenuation < -1e-8:
+        notes.append(f"Atenuação global de {attenuation:.2f} dB para respeitar o teto de pico.")
+    if before.stats["samples_at_or_above_full_scale"]:
+        notes.append("A entrada contém saturação digital que não pode ser revertida pelo processamento.")
+    if settings.strength == 0:
+        notes.append("Intensidade zero: filtros de voz e redução de ruído desativados.")
+    sos = np.vstack((conditioning_sos, eq_sos))
+    return Result(
+        audio, processed, before, after, settings, np.full(10, np.nan),
+        before.usable & after.usable, gains, sos, attenuation,
+        None, None, None, notes,
+    )
+
+
 def equalize(audio: Audio, settings: Settings | None = None, reference: Audio | None = None) -> Result:
     settings = settings or Settings()
+    if settings.target == "voice":
+        if reference is not None:
+            raise ValueError("O tratamento de voz não utiliza áudio de referência.")
+        return equalize_voice(audio, settings)
     before = analyze(audio)
     mask = before.usable.copy()
     target = np.zeros(10)
