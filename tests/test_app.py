@@ -30,13 +30,13 @@ def test_demo_interface_and_presentation_show_real_measurements():
 def test_controls_reprocess_and_missing_upload_has_clear_error():
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.slider(key="strength_Demonstração pronta").set_value(0)
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     result = app.session_state["result"]
     assert result.settings.strength == 0
     np.testing.assert_array_equal(result.original.samples, result.processed.samples)
     app.radio(key="audio_source").set_value("Enviar áudio").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Envie um arquivo" in error.value for error in app.error)
 
@@ -55,7 +55,7 @@ def test_microphone_without_recording_keeps_last_result_and_explains_error(monke
     previous = app.session_state["result"]
     app.radio(key="audio_source").set_value("Gravar áudio").run()
     assert not app.error
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Grave e encerre" in error.value for error in app.error)
     assert app.session_state["result"] is previous
@@ -66,7 +66,7 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert not app.error
     result = app.session_state["result"]
@@ -85,7 +85,7 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     app.run()
     assert app.session_state["result"] is result
     assert any("última análise concluída" in info.value for info in app.info)
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert app.session_state["signature"] != previous_signature
     assert not np.array_equal(app.session_state["result"].original.samples, result.original.samples)
@@ -96,7 +96,7 @@ def test_invalid_microphone_recording_is_reported_without_crashing(monkeypatch, 
     monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: BytesIO(payload))
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Não foi possível ler" in error.value for error in app.error)
 
@@ -109,12 +109,12 @@ def test_microphone_reference_requires_and_uses_uploaded_reference(monkeypatch):
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
     app.selectbox(key="target_Gravar áudio").set_value("reference").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Envie o arquivo de referência" in error.value for error in app.error)
     reference = microphone_wav(seed=43)
     app.run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert not app.error
     result = app.session_state["result"]
