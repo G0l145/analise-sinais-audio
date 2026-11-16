@@ -13,7 +13,7 @@ from signal_lab.charts import band_figure, gains_figure, psd_figure, response_fi
 from signal_lab.demo import demo_pair
 from signal_lab.dsp import Settings, equalize
 from signal_lab.presentation import render_presentation
-from signal_lab.report import TARGET_NAMES, band_table, csv_bytes, improvement_percent, json_bytes, make_report
+from signal_lab.report import TARGET_NAMES, band_table, csv_bytes, improvement_percent, json_bytes, make_report, voice_measurements
 
 st.set_page_config(page_title="Sinal · Análise e equalização de áudio", page_icon="🎛️", layout="wide")
 st.markdown("""
@@ -152,16 +152,25 @@ if presentation_mode:
 else:
     overview, analysis, correction, presentation = st.tabs(["Visão geral", "Análise de sinais", "Equalização", "Apresentação"])
     with overview:
-        st.subheader("Tratamento e comparação" if result.settings.target == "voice" else "A mudança, medida em relação ao alvo")
-        percentage = improvement_percent(result)
-        a, b, c, d = st.columns(4)
-        a.metric("Erro antes", formatted(result.error_before_db, " dB", 3))
-        b.metric("Erro depois", formatted(result.error_after_db, " dB", 3))
-        c.metric("Redução do erro", formatted(percentage, "%", 1))
-        d.metric("Bandas usadas", f"{np.count_nonzero(result.mask)}/10")
-        st.caption(TARGET_NAMES[result.settings.target] + (f" · {result.reference_name}" if result.reference_name else ""))
         if result.settings.target == "voice":
-            st.info("Neste modo, a eficácia deve ser avaliada pela escuta A/B. O erro RMSE de uma curva-alvo musical não mede clareza da fala.")
+            st.subheader("A mudança, medida na gravação de voz")
+            measures = voice_measurements(result)
+            a, b, c, d = st.columns(4)
+            a.metric("RMS antes", formatted(measures["rms_before_dbfs"], " dBFS"))
+            b.metric("RMS depois", formatted(measures["rms_after_dbfs"], " dBFS"))
+            c.metric("Variação RMS", formatted(measures["rms_change_db"], " dB"))
+            d.metric("Atenuação em trechos calmos", formatted(measures["low_energy_attenuation_db"], " dB"))
+            st.caption(f"{TARGET_NAMES[result.settings.target]} · Bandas analisadas: {np.count_nonzero(result.mask)}/10")
+            st.info("Valores calculados do áudio real. A atenuação compara os 20% de janelas de 100 ms menos energéticas do original com as mesmas janelas tratadas; podem conter fala baixa. Valor positivo indica redução de nível nesses trechos. RMS e atenuação não medem, isoladamente, inteligibilidade nem erro em relação a uma curva-alvo.")
+        else:
+            st.subheader("A mudança, medida em relação ao alvo")
+            percentage = improvement_percent(result)
+            a, b, c, d = st.columns(4)
+            a.metric("Erro antes", formatted(result.error_before_db, " dB", 3))
+            b.metric("Erro depois", formatted(result.error_after_db, " dB", 3))
+            c.metric("Redução do erro", formatted(percentage, "%", 1))
+            d.metric("Bandas usadas", f"{np.count_nonzero(result.mask)}/10")
+            st.caption(TARGET_NAMES[result.settings.target] + (f" · {result.reference_name}" if result.reference_name else ""))
         show_figure(band_figure(result))
         if result.settings.target != "voice":
             st.caption("Potências das bandas centralizadas na respectiva média; o erro RMSE avalia a forma do espectro e não o volume global.")
