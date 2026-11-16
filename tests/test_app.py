@@ -148,3 +148,48 @@ def test_microphone_main_button_applies_updated_strength_and_presenter(monkeypat
     for label in ["1 · Objetivo", "4 · Correção", "5 · Experimento", "6 · Conclusão"]:
         app.radio(key="presentation_slide").set_value(label).run()
         assert not app.exception
+
+
+
+def test_changing_demo_target_recalculates_results_without_click():
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    previous = app.session_state["result"]
+    assert previous.settings.target == "reference"
+
+    for target in ("gentle", "flat", "reference"):
+        app.selectbox(key="target_Demonstração pronta").set_value(target).run()
+        assert not app.exception
+        assert not app.error
+        result = app.session_state["result"]
+        assert result.settings.target == target
+        assert app.session_state["signature"][3].target == target
+        assert result is not previous
+        assert any(metric.label == "Erro antes" for metric in app.metric)
+        previous = result
+
+
+def test_recording_target_switch_recalculates_voice_and_music_metrics(monkeypatch):
+    recording = microphone_wav()
+    monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    app.radio(key="audio_source").set_value("Gravar áudio").run()
+    app.button(key="microphone_process").click().run()
+    assert not app.exception
+    previous = app.session_state["result"]
+    assert previous.settings.target == "voice"
+
+    for target in ("gentle", "flat", "voice"):
+        # Sem clique no botão de processar: o seletor deve reexecutar o DSP.
+        app.selectbox(key="target_Gravar áudio").set_value(target).run()
+        assert not app.exception
+        assert not app.error
+        result = app.session_state["result"]
+        assert result.settings.target == target
+        assert result is not previous
+        assert app.session_state["signature"][3].target == target
+        labels = {metric.label for metric in app.metric}
+        if target == "voice":
+            assert {"RMS antes", "RMS depois", "Variação RMS", "Atenuação em trechos calmos"} <= labels
+        else:
+            assert {"Erro antes", "Erro depois", "Redução do erro"} <= labels
+        previous = result
