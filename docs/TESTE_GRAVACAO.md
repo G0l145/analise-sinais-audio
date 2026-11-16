@@ -113,3 +113,5 @@ As verificações automatizadas não medem a latência física do microfone nem 
 7. Altere apenas a **intensidade da correção**: o sistema deve solicitar o clique no botão de processamento antes de atualizar o resultado (comportamento previsto).
 
 **Validação automatizada:** executar `python -m pytest -q` e verificar testes de interface (`tests/test_app.py`) e visualização (`tests/test_charts.py`). A validação num navegador e microfone físicos continua necessária para homologação.
+
+*Marca-d’água invisível de IA: não verificável.*
