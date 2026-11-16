@@ -7,8 +7,8 @@ Abra o terminal na pasta `/workspaces/analise-sinais-audio` e execute:
 ```bash
 git status --short
 git fetch origin
-git switch codex/gravacao-microfone
-git pull --ff-only origin codex/gravacao-microfone
+git switch fix/gravacao-voz-20261114
+git pull --ff-only origin fix/gravacao-voz-20261114
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 python -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501
@@ -25,14 +25,14 @@ Abra a aba **Ports**, localize **8501** e escolha **Open in Browser**. Use a pá
 | 1 | Escolher **Gravar áudio** e iniciar o gravador | O navegador solicita permissão; o gravador indica a captura |
 | 2 | Gravar 10–20 segundos de fala e encerrar | A gravação aparece no gravador e pode ser ouvida |
 | 3 | Baixar **Gravação original · WAV** | O navegador baixa o áudio capturado, antes de qualquer correção |
-| 4 | Manter **Curva suave**, clicar em **Analisar e equalizar** | O resultado identifica `gravacao_microfone.wav`, com duração, taxa e canais |
+| 4 | Manter **Voz nítida · limpeza e realce**, clicar em **Analisar e equalizar** | O resultado identifica `gravacao_microfone.wav`, com duração, taxa e canais |
 | 5 | Ouvir **A · Antes** e **B · Depois** na aba **Visão geral** | Os dois áudios podem ser reproduzidos; comparar com volume baixo |
 | 6 | Baixar o WAV equalizado, JSON e CSV | Os três arquivos são baixados e abrem sem erro |
 | 7 | Fazer outra gravação | A interface avisa que o resultado ainda pertence à análise anterior |
 | 8 | Clicar novamente em **Analisar e equalizar** | O resultado passa a corresponder à nova gravação |
 | 9 | Selecionar **Áudio de referência**, enviar um WAV e analisar | A referência é usada e identificada no resultado |
 
-O aplicativo processa a gravação **depois** de encerrada, ao clicar em **Analisar e equalizar**. Ganhos nulos ou diferenças discretas podem ocorrer: a correção depende do áudio, do alvo e das bandas mensuráveis. Equalização não remove necessariamente ruído, eco ou distorção que já existam na gravação.
+O aplicativo processa a gravação **depois** de encerrada, ao clicar em **Analisar e equalizar**. Ganhos nulos ou diferenças discretas podem ocorrer: a correção depende do áudio, do alvo e das bandas mensuráveis. O modo Voz nítida atenua parte de ruídos estacionários; não garante eliminar eco, ruído impulsivo ou distorções já existentes.
 
 ### Casos de erro
 
@@ -80,3 +80,38 @@ Para validar o restante do projeto, execute também `python -m pytest -q`. Os te
 ## Registrar o ensaio
 
 Anote o navegador/dispositivo, duração e taxa recebidas, alvo escolhido, erro antes/depois e se os downloads e a escuta funcionaram. Para compartilhar uma falha, envie a mensagem exibida e o trecho do terminal; use uma gravação sem dados pessoais. A aplicação mantém os áudios em memória no ambiente de execução e não os envia ao GitHub. Os downloads ficam no dispositivo do usuário. Não faça commit de gravações pessoais; use `audios-pessoais/` ou `resultados/`, ignorados pelo Git.
+
+
+## Verificação da nova limpeza e da experiência no celular
+
+1. Abra a página HTTPS no navegador do celular e selecione **Gravar áudio**.
+2. Observe se o gravador aparece na página principal; conceda a permissão quando solicitado. Registre o intervalo entre tocar em gravar e o início visível da captura. A latência depende do navegador e não há promessa de início instantâneo.
+3. Grave pelo menos 10 segundos de fala com um ventilador ou outra fonte leve de ruído constante ao fundo, mantendo distância fixa do microfone.
+4. Encerre e clique em **Analisar e equalizar** com **Voz nítida · limpeza e realce** selecionado.
+5. Confirme que não há exceção, que o nome da gravação aparece, e que a escuta **Antes/Depois** funciona. Observe se o ruído durante pausas diminui e se as palavras permanecem compreensíveis.
+6. Confira os três downloads, os filtros, as notas técnicas e o relatório JSON. Para Voz nítida, o RMSE musical deve ser `null`; isso é intencional.
+7. Selecione **Curva suave** e processe novamente o mesmo áudio para comparar o modo musical com o tratamento dedicado à fala.
+8. Repita com gravação silenciosa, trecho curto e nova gravação. A versão anterior deve continuar acessível quando houver erro de entrada, sem substituir um resultado válido.
+
+Para rodar somente as verificações novas:
+
+```bash
+python -m pytest -q tests/test_voice.py tests/test_recording.py tests/test_app.py
+```
+
+As verificações automatizadas não medem a latência física do microfone nem substituem escuta humana. Anote navegador, dispositivo, duração, mensagens de erro e tempo de processamento.
+
+
+## Verificação visual da troca de modos (16/11/2026)
+
+1. Inicie o sistema e observe o gráfico da demonstração. Selecione **Curva suave** e depois **Mesma potência por banda**. Sem clicar em **Analisar e equalizar**, confirme que os números, a curva-alvo, a saída e a dupla de cores mudaram.
+2. Selecione **Gravar áudio**, grave e processe uma frase de 8–10 segundos. Altere **Voz nítida → Curva suave → Mesma potência por banda → Voz nítida**. Cada mudança deve atualizar o gráfico e as métricas automaticamente, sem novo clique.
+3. Confira as cores em cada modo e diferencie as curvas pelos símbolos (círculo antes, quadrado depois) e pelo tracejado do alvo.
+4. Troque para uma fonte sem áudio. O gráfico anterior não deve aparecer como resultado da nova fonte.
+5. Selecione **Áudio de referência** sem fornecer a referência: o aplicativo deve informar que o arquivo é necessário e não reutilizar o resultado anterior.
+6. Aumente o zoom do navegador para verificar legendas, bandas e eixos. Em celular, confira a rolagem, a legibilidade e os dois áudios A/B.
+7. Altere apenas a **intensidade da correção**: o sistema deve solicitar o clique no botão de processamento antes de atualizar o resultado (comportamento previsto).
+
+**Validação automatizada:** executar `python -m pytest -q` e verificar testes de interface (`tests/test_app.py`) e visualização (`tests/test_charts.py`). A validação num navegador e microfone físicos continua necessária para homologação.
+
+*Marca-d’água invisível de IA: não verificável.*

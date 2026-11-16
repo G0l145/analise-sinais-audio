@@ -4,6 +4,35 @@ Projeto para a disciplina **Análise de Sinais**: recebe um arquivo de áudio ou
 
 Inclui uma **apresentação ao professor em seis etapas**, com fórmulas, gráficos e um experimento reproduzível. A demonstração inicial é gerada pelo próprio programa; não exige baixar músicas.
 
+## Gráficos nítidos e atualização automática
+
+Na **Visão geral**, a curva-alvo ou a fonte do áudio pode ser alterada diretamente na barra lateral: quando já existe uma entrada de áudio válida, a análise, os números, o gráfico por bandas e as prévias A/B são **recalculados automaticamente**, sem precisar pressionar novamente o botão de processamento. Se faltar gravação, arquivo ou referência exigida, o aplicativo pede a entrada correspondente e não exibe gráficos antigos como se fossem atuais. Alterações de intensidade e parâmetros dos filtros ainda exigem clicar em **Analisar e equalizar** ou **Processar gravação**.
+
+Os gráficos utilizam maior resolução (165 dpi), linhas mais espessas, marcadores diferentes para **Antes** (círculos) e **Depois** (quadrados) e paletas próprias por modo:
+
+- **Curva suave:** azul (antes) e laranja (depois).
+- **Mesma potência por banda:** violeta (antes) e verde (depois).
+- **Áudio de referência:** vermelho (antes) e azul (depois).
+- **Voz nítida:** magenta (antes) e verde-petróleo (depois).
+
+Nos modos com alvo numérico, a linha **Alvo** permanece tracejada, em uma terceira cor. A mudança da paleta não altera o cálculo nem os ganhos de equalização; ela melhora apenas a comparação visual. Para voz, as medições são do sinal, não de uma curva-alvo musical.
+
+## Tratamento de gravações de voz (nova opção)
+
+Na interface, escolha **Gravar áudio**. O gravador aparece na área principal (inclusive no celular), com amostragem solicitada de 16 kHz. Conceda a permissão do microfone no navegador, grave, encerre a captura e clique em **Analisar e equalizar**. A opção padrão para a gravação é **Voz nítida · limpeza e realce**; também está disponível para arquivos enviados.
+
+O modo de voz combina filtragem passa-altas (~75 Hz), passa-baixas ajustado à taxa de amostragem, supressão espectral moderada de ruído estacionário em blocos, realce controlado da região de inteligibilidade (sobretudo 2–4 kHz), recuperação limitada de nível e proteção de pico. A saída preserva a duração, taxa e canais. O material bruto permanece disponível para comparação e exportação. **Não é cancelamento ativo de ruído, isolamento de voz por IA nem reparo de clipping.** Resultados variam conforme microfone e ambiente; compare sempre A/B, idealmente com fones, em volume baixo.
+
+A métrica de erro de curva-alvo musical não é aplicável a esse modo (o relatório indica `null`), pois menor erro espectral não demonstra fala mais inteligível. Para evitar resultados vazios, a **Visão geral** e a apresentação exibem números calculados da própria gravação: RMS antes e depois (dBFS), variação RMS (dB) e atenuação nos 20% de janelas de 100 ms menos energéticas do áudio original, comparadas com as mesmas janelas tratadas. A métrica de janelas calmas pode incluir fala baixa e **não é uma medida certificada de ruído ou inteligibilidade**. Essas medições também constam do JSON em `voice_measurements`. Em silêncio digital, medições logarítmicas indefinidas permanecem indisponíveis, sem inventar números. Os gráficos de resposta em frequência representam somente os filtros lineares; a redução espectral de ruído varia com o conteúdo.
+
+Para processar uma gravação WAV sem o navegador:
+
+```bash
+python -m signal_lab.cli equalize fala.wav --target voice --out resultados/voz-01
+```
+
+A captura depende do navegador, permissões e hardware: não é possível garantir tempo de início de gravação zero por alterações no Python. O processamento é iniciado após o término da captura. Para validar, execute `python -m pytest -q` e siga [o roteiro de testes de gravação](docs/TESTE_GRAVACAO.md).
+
 ## Apresentação acadêmica e validação
 
 A **[proposta para apresentar ao professor](docs/PROPOSTA_ACADEMICA.md)** explica a ideia, o funcionamento planejado e o que já está implementado no protótipo. O **[roteiro detalhado](docs/APRESENTACAO.md)** organiza a demonstração em seis etapas.
@@ -156,3 +185,5 @@ signal_lab/presentation.py  Apresentação em seis etapas
 signal_lab/cli.py           Execução pelo terminal
 tests/                      Verificações de processamento e interface
 ```
+
+*Marca-d’água invisível de IA: não verificável.*

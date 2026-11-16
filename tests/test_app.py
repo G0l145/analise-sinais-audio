@@ -30,13 +30,13 @@ def test_demo_interface_and_presentation_show_real_measurements():
 def test_controls_reprocess_and_missing_upload_has_clear_error():
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.slider(key="strength_Demonstração pronta").set_value(0)
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     result = app.session_state["result"]
     assert result.settings.strength == 0
     np.testing.assert_array_equal(result.original.samples, result.processed.samples)
     app.radio(key="audio_source").set_value("Enviar áudio").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Envie um arquivo" in error.value for error in app.error)
 
@@ -55,7 +55,7 @@ def test_microphone_without_recording_keeps_last_result_and_explains_error(monke
     previous = app.session_state["result"]
     app.radio(key="audio_source").set_value("Gravar áudio").run()
     assert not app.error
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Grave e encerre" in error.value for error in app.error)
     assert app.session_state["result"] is previous
@@ -66,15 +66,24 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
-    app.button[0].click().run()
+    app.button(key="microphone_process").click().run()
     assert not app.exception
     assert not app.error
     result = app.session_state["result"]
     assert result.original.name == "gravacao_microfone.wav"
-    assert result.settings.target == "gentle"
+    assert result.settings.target == "voice"
+    assert result.error_before_db is None
+    assert result.error_after_db is None
+    metrics = {metric.label: metric.value for metric in app.metric}
+    assert metrics["RMS antes"].endswith(" dBFS")
+    assert metrics["RMS depois"].endswith(" dBFS")
+    assert metrics["Variação RMS"].endswith(" dB")
+    assert metrics["Atenuação em trechos calmos"].endswith(" dB")
+    assert metrics["RMS antes"] != "—"
     assert result.original.sample_rate == 16_000
     assert result.original.samples.shape == result.processed.samples.shape
-    assert result.error_after_db <= result.error_before_db + 1e-8
+    assert np.isfinite(result.processed.samples).all()
+    assert any("redução" in note for note in result.notes)
     assert len(app.get("download_button")) == 4
     assert any(button.proto.label == "↓ Gravação original · WAV" for button in app.get("download_button"))
     previous_signature = app.session_state["signature"]
@@ -82,7 +91,7 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     app.run()
     assert app.session_state["result"] is result
     assert any("última análise concluída" in info.value for info in app.info)
-    app.button[0].click().run()
+    app.button(key="microphone_process").click().run()
     assert not app.exception
     assert app.session_state["signature"] != previous_signature
     assert not np.array_equal(app.session_state["result"].original.samples, result.original.samples)
@@ -93,7 +102,7 @@ def test_invalid_microphone_recording_is_reported_without_crashing(monkeypatch, 
     monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: BytesIO(payload))
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Não foi possível ler" in error.value for error in app.error)
 
@@ -106,14 +115,124 @@ def test_microphone_reference_requires_and_uses_uploaded_reference(monkeypatch):
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
     app.selectbox(key="target_Gravar áudio").set_value("reference").run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert any("Envie o arquivo de referência" in error.value for error in app.error)
     reference = microphone_wav(seed=43)
     app.run()
-    app.button[0].click().run()
+    app.button(key="run_equalizer").click().run()
     assert not app.exception
     assert not app.error
     result = app.session_state["result"]
     assert result.settings.target == "reference"
     assert result.reference_name == reference.name
+
+
+
+def test_microphone_main_button_applies_updated_strength_and_presenter(monkeypatch):
+    recording = microphone_wav()
+    monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    app.radio(key="audio_source").set_value("Gravar áudio").run()
+    assert not app.exception
+    assert not app.exception
+    assert app.session_state["result"].settings.target == "voice"
+    assert app.session_state["signature"][0] == "Gravar áudio"  # Fonte com gravação disponível é atualizada automaticamente.
+    app.slider(key="strength_Gravar áudio").set_value(0).run()
+    app.button(key="microphone_process").click().run()
+    assert not app.exception
+    result = app.session_state["result"]
+    assert result.settings.target == "voice"
+    assert result.settings.strength == 0
+    np.testing.assert_array_equal(result.original.samples, result.processed.samples)
+    app.toggle(key="presentation_mode").set_value(True).run()
+    assert not app.exception
+    for label in ["1 · Objetivo", "4 · Correção", "5 · Experimento", "6 · Conclusão"]:
+        app.radio(key="presentation_slide").set_value(label).run()
+        assert not app.exception
+
+
+
+def test_changing_demo_target_recalculates_results_without_click():
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    previous = app.session_state["result"]
+    assert previous.settings.target == "reference"
+
+    for target in ("gentle", "flat", "reference"):
+        app.selectbox(key="target_Demonstração pronta").set_value(target).run()
+        assert not app.exception
+        assert not app.error
+        result = app.session_state["result"]
+        assert result.settings.target == target
+        assert app.session_state["signature"][3].target == target
+        assert result is not previous
+        assert any(metric.label == "Erro antes" for metric in app.metric)
+        previous = result
+
+
+def test_recording_target_switch_recalculates_voice_and_music_metrics(monkeypatch):
+    recording = microphone_wav()
+    monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    app.radio(key="audio_source").set_value("Gravar áudio").run()
+    app.button(key="microphone_process").click().run()
+    assert not app.exception
+    previous = app.session_state["result"]
+    assert previous.settings.target == "voice"
+
+    for target in ("gentle", "flat", "voice"):
+        # Sem clique no botão de processar: o seletor deve reexecutar o DSP.
+        app.selectbox(key="target_Gravar áudio").set_value(target).run()
+        assert not app.exception
+        assert not app.error
+        result = app.session_state["result"]
+        assert result.settings.target == target
+        assert result is not previous
+        assert app.session_state["signature"][3].target == target
+        labels = {metric.label for metric in app.metric}
+        if target == "voice":
+            assert {"RMS antes", "RMS depois", "Variação RMS", "Atenuação em trechos calmos"} <= labels
+        else:
+            assert {"Erro antes", "Erro depois", "Redução do erro"} <= labels
+        previous = result
+
+
+
+def test_switching_source_refreshes_when_audio_is_available_and_hides_old_results(monkeypatch):
+    recording = microphone_wav()
+    monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    previous = app.session_state["result"]
+    app.radio(key="audio_source").set_value("Gravar áudio").run()
+    assert not app.exception
+    assert app.session_state["result"] is not previous
+    assert app.session_state["result"].settings.target == "voice"
+    assert app.session_state["signature"][0] == "Gravar áudio"
+
+    app.radio(key="audio_source").set_value("Demonstração pronta").run()
+    assert not app.exception
+    assert app.session_state["result"].settings.target == "reference"
+    assert app.session_state["signature"][0] == "Demonstração pronta"
+
+    # Fonte sem arquivo: não usar gráfico nem resultado de uma fonte anterior.
+    app.radio(key="audio_source").set_value("Enviar áudio").run()
+    assert not app.exception
+    assert len(app.tabs) == 0
+    assert any("fonte" in info.value.lower() for info in app.info)
+
+
+
+def test_uploaded_audio_recomputes_when_target_switches_without_button(monkeypatch):
+    uploaded = microphone_wav()
+    monkeypatch.setattr("streamlit.file_uploader", lambda *args, **kwargs: uploaded)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    app.radio(key="audio_source").set_value("Enviar áudio").run()
+    assert not app.exception
+    assert app.session_state["result"].settings.target == "gentle"
+    before = app.session_state["result"]
+    app.selectbox(key="target_Enviar áudio").set_value("voice").run()
+    assert not app.exception
+    assert not app.error
+    assert app.session_state["result"] is not before
+    assert app.session_state["result"].settings.target == "voice"
+    assert any(metric.label == "RMS antes" for metric in app.metric)

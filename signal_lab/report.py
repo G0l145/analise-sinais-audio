@@ -14,6 +14,7 @@ TARGET_NAMES = {
     "flat": "Mesma potência por banda de aproximadamente uma oitava",
     "gentle": "Potência por banda com inclinação de -1 dB por oitava",
     "reference": "Forma espectral de um áudio de referência",
+    "voice": "Tratamento de fala: redução de ruído e realce da faixa de presença",
 }
 
 
@@ -25,6 +26,48 @@ def improvement_percent(result: Result) -> float | None:
     if result.error_before_db is None or result.error_after_db is None or result.error_before_db < 1e-9:
         return None
     return 100 * (1 - result.error_after_db / result.error_before_db)
+
+
+
+def _level_dbfs(power: float) -> float | None:
+    """Converte potência normalizada em dBFS; silêncio não possui nível finito."""
+    return float(10 * np.log10(power)) if power > 0 else None
+
+
+def voice_measurements(result: Result) -> dict:
+    """Medições objetivas do modo vocal, sem atribuir pontuação de inteligibilidade.
+
+    As mesmas janelas, escolhidas pelos 20% menores níveis RMS da ENTRADA,
+    são comparadas na saída. Podem conter fala baixa, não apenas ruído.
+    """
+    if result.settings.target != "voice":
+        raise ValueError("As medições de voz exigem o modo voice.")
+    original = result.original.samples
+    processed = result.processed.samples
+    window = min(len(original), max(1, round(result.original.sample_rate * 0.1)))
+    count = len(original) // window
+    before_power = np.mean(original[:count * window].reshape(count, window, -1) ** 2, axis=(1, 2))
+    after_power = np.mean(processed[:count * window].reshape(count, window, -1) ** 2, axis=(1, 2))
+    selected_count = max(1, int(np.ceil(count * 0.2)))
+    selected = np.argsort(before_power, kind="stable")[:selected_count]
+    low_before = _level_dbfs(float(np.mean(before_power[selected])))
+    low_after = _level_dbfs(float(np.mean(after_power[selected])))
+    rms_before = result.before.stats["rms_dbfs"]
+    rms_after = result.after.stats["rms_dbfs"]
+    return {
+        "rms_before_dbfs": rms_before,
+        "rms_after_dbfs": rms_after,
+        "rms_change_db": (float(rms_after - rms_before)
+                          if rms_before is not None and rms_after is not None else None),
+        "low_energy_before_dbfs": low_before,
+        "low_energy_after_dbfs": low_after,
+        "low_energy_attenuation_db": (float(low_before - low_after)
+                                      if low_before is not None and low_after is not None else None),
+        "low_energy_window_duration_ms": 1000 * window / result.original.sample_rate,
+        "low_energy_selected_windows": selected_count,
+        "low_energy_total_windows": count,
+        "low_energy_fraction": 0.2,
+    }
 
 
 def band_table(result: Result) -> pd.DataFrame:
@@ -83,6 +126,7 @@ def make_report(result: Result) -> dict:
         },
         "metrics_before": result.before.stats,
         "metrics_after": result.after.stats,
+        "voice_measurements": voice_measurements(result) if result.settings.target == "voice" else None,
         "relative_shape_rmse_before_db": result.error_before_db,
         "relative_shape_rmse_after_db": result.error_after_db,
         "relative_shape_rmse_reduction_percent": improvement_percent(result),
