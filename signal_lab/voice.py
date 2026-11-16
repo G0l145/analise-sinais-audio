@@ -46,11 +46,20 @@ def reduce_stationary_noise(samples: np.ndarray, sample_rate: int, strength: flo
                                   noverlap=min(overlap, max(0, len(segment) - 1)),
                                   boundary="zeros", padded=True)
             magnitude = np.abs(spectrum)
-            noise = np.percentile(magnitude, 15, axis=1, keepdims=True)
-            ratio = (noise / np.maximum(magnitude, 1e-12)) ** 2
-            mask = np.clip(1.0 - 0.8 * strength * ratio,
-                           max(0.25, 1.0 - strength), 1.0)
-            mask = uniform_filter(mask, size=(3, 3), mode="nearest")
+            # Não confundir uma fonte tonal contínua com ruído de fundo:
+            # sem contraste temporal suficiente, não aplicar máscara.
+            frame_level = np.sqrt(np.mean(magnitude ** 2, axis=0))
+            low = float(np.percentile(frame_level, 20))
+            high = float(np.percentile(frame_level, 80))
+            if high < max(1e-10, low * 1.8):
+                mask = np.ones_like(magnitude)
+            else:
+                # Percentil espectral baixo subestima o piso de ruído.
+                noise = 2.0 * np.percentile(magnitude, 15, axis=1, keepdims=True)
+                ratio = (noise / np.maximum(magnitude, 1e-12)) ** 2
+                mask = np.clip(1.0 - 0.8 * strength * ratio,
+                               max(0.25, 1.0 - strength), 1.0)
+                mask = uniform_filter(mask, size=(3, 3), mode="nearest")
             _, restored = istft(spectrum * mask, fs=sample_rate, window="hann",
                                 nperseg=min(window, len(segment)),
                                 noverlap=min(overlap, max(0, len(segment) - 1)),
