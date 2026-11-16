@@ -7,7 +7,7 @@ import soundfile as sf
 
 from signal_lab.audio import Audio, read_audio, wav_bytes
 from signal_lab.dsp import Settings, equalize
-from signal_lab.report import json_bytes
+from signal_lab.report import json_bytes, make_report, voice_measurements
 
 
 def fake_recording(rate=16_000, duration=2.0, noise=0.02):
@@ -95,3 +95,39 @@ def test_very_short_recording_stays_finite_and_exportable(rate):
     assert result.processed.samples.shape == (2, 1)
     assert np.isfinite(result.processed.samples).all()
     assert wav_bytes(result.processed)
+
+
+def test_voice_measurements_match_samples_and_report():
+    result = equalize(fake_recording(), Settings(target="voice", strength=1.0))
+    measured = voice_measurements(result)
+    assert np.isfinite(measured["rms_before_dbfs"])
+    assert np.isfinite(measured["rms_after_dbfs"])
+    assert measured["rms_change_db"] == pytest.approx(
+        measured["rms_after_dbfs"] - measured["rms_before_dbfs"]
+    )
+    assert measured["low_energy_selected_windows"] == 4
+    assert measured["low_energy_total_windows"] == 20
+    assert measured["low_energy_attenuation_db"] > 0
+    assert measured["low_energy_attenuation_db"] == pytest.approx(
+        measured["low_energy_before_dbfs"] - measured["low_energy_after_dbfs"]
+    )
+    assert make_report(result)["voice_measurements"] == measured
+
+
+def test_voice_measurements_no_change_and_silence_without_fabricated_numbers():
+    unchanged = equalize(fake_recording(), Settings(target="voice", strength=0))
+    measured = voice_measurements(unchanged)
+    assert measured["rms_change_db"] == pytest.approx(0)
+    assert measured["low_energy_attenuation_db"] == pytest.approx(0)
+    silent = equalize(Audio(np.zeros(16_000), 16_000), Settings(target="voice"))
+    silent_metrics = voice_measurements(silent)
+    assert silent_metrics["rms_before_dbfs"] is None
+    assert silent_metrics["rms_change_db"] is None
+    assert silent_metrics["low_energy_attenuation_db"] is None
+    assert b'"voice_measurements"' in json_bytes(silent)
+
+
+def test_voice_measurements_reject_musical_target():
+    result = equalize(fake_recording(), Settings(target="flat"))
+    with pytest.raises(ValueError, match="modo voice"):
+        voice_measurements(result)
