@@ -185,3 +185,5 @@ signal_lab/presentation.py  Apresentação em seis etapas
 signal_lab/cli.py           Execução pelo terminal
 tests/                      Verificações de processamento e interface
 ```
+
+*Marca-d’água invisível de IA: não verificável.*
