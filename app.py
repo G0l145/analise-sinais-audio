@@ -50,15 +50,15 @@ def upload_hash(upload):
     return None if upload is None else hashlib.sha256(upload.getvalue()).hexdigest()
 
 
-def reprocess_on_target_change():
-    """A alteração da curva solicita nova análise na próxima execução Streamlit."""
-    st.session_state["target_changed"] = True
+def reprocess_on_mode_change():
+    """Trocar a fonte ou curva solicita nova análise, se houver áudio disponível."""
+    st.session_state["mode_changed"] = True
 
 
 with st.sidebar:
     st.title("🎛️ Sinal")
     st.caption("ANÁLISE DE SINAIS · PROJETO ACADÊMICO")
-    source = st.radio("Fonte do áudio", ["Demonstração pronta", "Enviar áudio", "Gravar áudio"], key="audio_source")
+    source = st.radio("Fonte do áudio", ["Demonstração pronta", "Enviar áudio", "Gravar áudio"], key="audio_source", on_change=reprocess_on_mode_change)
     uploaded = None
     uploaded_reference = None
     if source == "Enviar áudio":
@@ -71,7 +71,7 @@ with st.sidebar:
     modes = (["reference", "gentle", "flat"] if source == "Demonstração pronta"
              else ["voice", "gentle", "flat", "reference"] if source == "Gravar áudio"
              else ["gentle", "voice", "flat", "reference"])
-    target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda", "voice": "Voz nítida · limpeza e realce"}[x], key=f"target_{source}", on_change=reprocess_on_target_change)
+    target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda", "voice": "Voz nítida · limpeza e realce"}[x], key=f"target_{source}", on_change=reprocess_on_mode_change)
     if source != "Demonstração pronta" and target == "reference":
         uploaded_reference = st.file_uploader("Arquivo de referência", type=["wav", "flac", "mp3"], key="reference_upload")
     with st.container():
@@ -82,7 +82,7 @@ with st.sidebar:
             ceiling = st.slider("Teto de pico de amostras (dBFS)", -12.0, -0.5, -1.0, 0.5)
         submitted = st.button("Analisar e equalizar", type="primary", use_container_width=True, key="run_equalizer")
     rms_match = st.toggle("Igualar RMS na escuta A/B", value=True, key="rms_match")
-    st.caption("A troca da curva-alvo reprocessa automaticamente o áudio disponível e atualiza os gráficos. Para alterar intensidade ou filtros, pressione um botão de processamento. Igualar RMS modifica apenas a escuta A/B.")
+    st.caption("Trocar a fonte ou a curva-alvo reprocessa automaticamente o áudio disponível e atualiza os gráficos. Para alterar intensidade ou filtros, pressione um botão de processamento. Igualar RMS modifica apenas a escuta A/B.")
     st.divider()
     st.caption("Arquivos enviados e gravações são processados no ambiente que executa o aplicativo. Não são enviados ao GitHub. A aplicação não grava esses áudios em disco.")
 
@@ -103,8 +103,8 @@ if source == "Gravar áudio":
 
 # A troca do modo deve atualizar gráficos, áudio e medições sem novo clique.
 # Sem gravação/upload, não reutilizar um gráfico antigo de outra fonte.
-target_changed = st.session_state.pop("target_changed", False)
-auto_submit = target_changed and (source == "Demonstração pronta" or uploaded is not None)
+mode_changed = st.session_state.pop("mode_changed", False)
+auto_submit = mode_changed and (source == "Demonstração pronta" or uploaded is not None)
 submitted = submitted or record_submit or auto_submit
 settings = Settings(target=target, strength=strength, max_gain_db=max_gain, q=q, ceiling_dbfs=ceiling)
 signature = (source, upload_hash(uploaded), upload_hash(uploaded_reference), settings)
@@ -139,7 +139,7 @@ if "result" not in st.session_state:
 result = st.session_state["result"]
 reference = st.session_state.get("reference")
 if signature != st.session_state["signature"]:
-    st.info("A fonte, os parâmetros ou o arquivo mudaram. Para atualizar estes itens, pressione “Analisar e equalizar” ou “Processar gravação”. A troca da curva-alvo atualiza automaticamente quando o áudio de entrada está disponível.")
+    st.info("A fonte, os parâmetros ou o arquivo mudaram. Para atualizar estes itens, pressione “Analisar e equalizar” ou “Processar gravação”. A troca de fonte ou curva-alvo atualiza automaticamente quando o áudio de entrada está disponível.")
     # Não renderizar gráficos e exportações de um áudio antigo ao iniciar uma nova captura.
     st.stop()
 st.caption(f"RESULTADO ATUAL · {result.original.name} · {result.original.duration:.2f} s · {result.original.sample_rate:,} Hz · {result.original.channels} canal(is)".replace(",", "."))
