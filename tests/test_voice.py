@@ -52,8 +52,8 @@ def test_voice_reduces_noise_in_pause_without_erasing_speech():
     pause = slice(int(rate * 0.1), int(rate * 0.4))
     speech = slice(int(rate * 0.8), int(rate * 1.2))
     rms = lambda values: float(np.sqrt(np.mean(values ** 2)))
-    assert rms(processed[pause]) < rms(original[pause])
-    assert rms(processed[speech]) > 0.3 * rms(original[speech])
+    assert rms(processed[pause]) < 0.8 * rms(original[pause])
+    assert rms(processed[speech]) > 0.85 * rms(original[speech])
 
 
 def test_zero_strength_is_identity_for_safe_signal():
@@ -75,3 +75,23 @@ def test_voice_refuses_reference():
     audio = fake_recording()
     with pytest.raises(ValueError, match="não utiliza"):
         equalize(audio, Settings(target="voice"), audio)
+
+
+@pytest.mark.parametrize("rate", [16_000, 48_000])
+def test_continuous_tone_not_mistaken_for_stationary_noise(rate):
+    t = np.arange(2 * rate) / rate
+    signal = 0.25 * np.sin(2 * np.pi * 180 * t)
+    result = equalize(Audio(signal, rate), Settings(target="voice", strength=1.0))
+    before = float(np.sqrt(np.mean(result.original.samples ** 2)))
+    after = float(np.sqrt(np.mean(result.processed.samples ** 2)))
+    assert after > 0.85 * before
+    assert np.isfinite(result.processed.samples).all()
+
+
+@pytest.mark.parametrize("rate", [8_000, 16_000, 48_000, 96_000])
+def test_very_short_recording_stays_finite_and_exportable(rate):
+    capture = Audio(np.array([0.25, 0.10]), rate)
+    result = equalize(capture, Settings(target="voice"))
+    assert result.processed.samples.shape == (2, 1)
+    assert np.isfinite(result.processed.samples).all()
+    assert wav_bytes(result.processed)
