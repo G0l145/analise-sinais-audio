@@ -120,3 +120,25 @@ def test_microphone_reference_requires_and_uses_uploaded_reference(monkeypatch):
     result = app.session_state["result"]
     assert result.settings.target == "reference"
     assert result.reference_name == reference.name
+
+
+
+def test_microphone_main_button_applies_updated_strength_and_presenter(monkeypatch):
+    recording = microphone_wav()
+    monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    app.radio(key="audio_source").set_value("Gravar áudio").run()
+    assert not app.exception
+    assert len(app.tabs) == 0  # Uma fonte diferente não deve redesenhar a análise antiga.
+    app.slider(key="strength_Gravar áudio").set_value(0).run()
+    app.button(key="microphone_process").click().run()
+    assert not app.exception
+    result = app.session_state["result"]
+    assert result.settings.target == "voice"
+    assert result.settings.strength == 0
+    np.testing.assert_array_equal(result.original.samples, result.processed.samples)
+    app.toggle(key="presentation_mode").set_value(True).run()
+    assert not app.exception
+    for label in ["1 · Objetivo", "4 · Correção", "5 · Experimento", "6 · Conclusão"]:
+        app.radio(key="presentation_slide").set_value(label).run()
+        assert not app.exception
