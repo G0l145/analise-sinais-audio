@@ -216,9 +216,10 @@ else:
         st.subheader("Ganhos realmente aplicados")
         show_figure(gains_figure(result))
         st.dataframe(band_table(result), hide_index=True)
-        st.caption("Bandas excluídas recebem ganho zero e valores relativos indisponíveis. Cada filtro é limitado a ±6 dB; a soma das respostas pode exceder esse valor.")
         if result.settings.target == "voice":
-            st.caption("A tabela apresenta os ganhos de presença; a limpeza de ruído utiliza também uma máscara espectral adaptativa.")
+            st.caption("As bandas mensuráveis são destacadas. O perfil fixo de presença pode aplicar filtros mesmo a bandas sem energia detectável; a redução de ruído utiliza também uma máscara espectral adaptativa.")
+        else:
+            st.caption("Bandas excluídas recebem ganho zero e valores relativos indisponíveis. Cada filtro é limitado a ±6 dB; a soma das respostas pode exceder esse valor.")
         st.subheader("Resposta dos filtros em cascata")
         show_figure(response_figure(result))
         st.write(f"**Atenuação global para proteção de pico:** {result.attenuation_db:.2f} dB.")
