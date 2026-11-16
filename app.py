@@ -69,15 +69,15 @@ with st.sidebar:
     target = st.selectbox("Curva-alvo", modes, format_func=lambda x: {"reference": "Áudio de referência", "gentle": "Curva suave · -1 dB/oitava", "flat": "Mesma potência por banda", "voice": "Voz nítida · limpeza e realce"}[x], key=f"target_{source}")
     if source != "Demonstração pronta" and target == "reference":
         uploaded_reference = st.file_uploader("Arquivo de referência", type=["wav", "flac", "mp3"], key="reference_upload")
-    with st.form("equalization_controls"):
+    with st.container():
         strength = st.slider("Intensidade da correção", 0.0, 1.0, 0.85 if source == "Demonstração pronta" else 0.65, 0.05, key=f"strength_{source}")
         with st.expander("Parâmetros dos filtros"):
             max_gain = st.slider("Limite por filtro (±dB)", 0.0, 6.0, 6.0, 0.5)
             q = st.slider("Fator de qualidade Q", 0.2, 5.0, 1.4, 0.1)
             ceiling = st.slider("Teto de pico de amostras (dBFS)", -12.0, -0.5, -1.0, 0.5)
-        submitted = st.form_submit_button("Analisar e equalizar", type="primary", use_container_width=True, key="run_equalizer")
+        submitted = st.button("Analisar e equalizar", type="primary", use_container_width=True, key="run_equalizer")
     rms_match = st.toggle("Igualar RMS na escuta A/B", value=True, key="rms_match")
-    st.caption("A equalização modifica o equilíbrio espectral. A opção de RMS modifica somente as prévias de escuta.")
+    st.caption("Os parâmetros são aplicados ao pressionar qualquer botão de processamento. A opção RMS modifica somente as prévias de escuta.")
     st.divider()
     st.caption("Arquivos enviados e gravações são processados no ambiente que executa o aplicativo. Não são enviados ao GitHub. A aplicação não grava esses áudios em disco.")
 
@@ -130,7 +130,9 @@ if "result" not in st.session_state:
 result = st.session_state["result"]
 reference = st.session_state.get("reference")
 if signature != st.session_state["signature"]:
-    st.info("A fonte, os controles ou o áudio foram alterados. Clique em “Analisar e equalizar” para atualizar. Os resultados abaixo pertencem à última análise concluída.")
+    st.info("A fonte, os controles ou o áudio foram alterados. Clique em “Analisar e equalizar” ou “Processar gravação” para atualizar. Os resultados abaixo pertencem à última análise concluída.")
+    # Não renderizar gráficos e exportações de um áudio antigo ao iniciar uma nova captura.
+    st.stop()
 st.caption(f"RESULTADO ATUAL · {result.original.name} · {result.original.duration:.2f} s · {result.original.sample_rate:,} Hz · {result.original.channels} canal(is)".replace(",", "."))
 
 # Não reprocessar e reserializar os WAVs a cada interação com a interface.
@@ -150,7 +152,7 @@ if presentation_mode:
 else:
     overview, analysis, correction, presentation = st.tabs(["Visão geral", "Análise de sinais", "Equalização", "Apresentação"])
     with overview:
-        st.subheader("A mudança, medida em relação ao alvo")
+        st.subheader("Tratamento e comparação" if result.settings.target == "voice" else "A mudança, medida em relação ao alvo")
         percentage = improvement_percent(result)
         a, b, c, d = st.columns(4)
         a.metric("Erro antes", formatted(result.error_before_db, " dB", 3))
@@ -161,7 +163,10 @@ else:
         if result.settings.target == "voice":
             st.info("Neste modo, a eficácia deve ser avaliada pela escuta A/B. O erro RMSE de uma curva-alvo musical não mede clareza da fala.")
         show_figure(band_figure(result))
-        st.caption("Potências das bandas centralizadas na respectiva média; o erro RMSE avalia a forma do espectro e não o volume global.")
+        if result.settings.target != "voice":
+            st.caption("Potências das bandas centralizadas na respectiva média; o erro RMSE avalia a forma do espectro e não o volume global.")
+        else:
+            st.caption("A análise de bandas permite visualizar as mudanças; a clareza da fala exige avaliação auditiva.")
         st.subheader("Escuta comparativa")
         a, b = st.columns(2)
         with a:
@@ -180,9 +185,13 @@ else:
         st.subheader("Exportar o resultado")
         stem = re.sub(r"[^A-Za-z0-9_-]", "_", Path(result.original.name).stem)[:60] or "audio"
         a, b, c = st.columns(3)
-        a.download_button("↓ Áudio equalizado · WAV", wav_bytes(result.processed), file_name=f"{stem}_equalizado.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
-        b.download_button("↓ Relatório completo · JSON", json_bytes(result), file_name=f"{stem}_relatorio.json", mime="application/json", on_click="ignore", use_container_width=True)
-        c.download_button("↓ Medições por banda · CSV", csv_bytes(result), file_name=f"{stem}_bandas.csv", mime="text/csv", on_click="ignore", use_container_width=True)
+        if st.session_state.get("exports_key") != st.session_state["signature"]:
+            st.session_state["exports"] = (wav_bytes(result.processed), json_bytes(result), csv_bytes(result))
+            st.session_state["exports_key"] = st.session_state["signature"]
+        audio_out, report_out, bands_out = st.session_state["exports"]
+        a.download_button("↓ Áudio equalizado · WAV", audio_out, file_name=f"{stem}_equalizado.wav", mime="audio/wav", on_click="ignore", use_container_width=True)
+        b.download_button("↓ Relatório completo · JSON", report_out, file_name=f"{stem}_relatorio.json", mime="application/json", on_click="ignore", use_container_width=True)
+        c.download_button("↓ Medições por banda · CSV", bands_out, file_name=f"{stem}_bandas.csv", mime="text/csv", on_click="ignore", use_container_width=True)
         st.caption("WAV PCM de 24 bits com taxa, duração e canais preservados. A opção de RMS da escuta não altera o arquivo exportado.")
     with analysis:
         st.subheader("Domínio do tempo")
