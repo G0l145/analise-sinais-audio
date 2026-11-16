@@ -12,7 +12,64 @@ SLIDES = [
 ]
 
 
+def render_voice_presentation(result: Result, before_audio: bytes, after_audio: bytes):
+    """Apresentação de voz separada do experimento de RMSE musical."""
+    slide = st.radio("Etapas da apresentação", SLIDES, horizontal=True, key="presentation_slide")
+    index = SLIDES.index(slide)
+    st.caption(f"ETAPA {index + 1} DE 6 · TRATAMENTO DE VOZ")
+    if index == 0:
+        st.title("Limpeza de gravações e inteligibilidade da voz")
+        st.write("Objetivo: atenuar ruído estacionário e aumentar a presença da fala, preservando a gravação original.")
+        st.info("A inteligibilidade não é demonstrada pela redução do RMSE de uma curva musical.")
+    elif index == 1:
+        st.title("Do microfone ao resultado")
+        for step in (
+            "01 · Capturar áudio WAV no navegador, após permissão de microfone.",
+            "02 · Ler o arquivo e validar duração, taxa e canais.",
+            "03 · Atenuar graves indesejados e altas frequências fora da faixa da fala.",
+            "04 · Aplicar redução moderada de ruído estacionário por máscara espectral.",
+            "05 · Realçar a presença vocal com filtros e proteger contra saturação.",
+            "06 · Comparar antes/depois e exportar WAV, JSON e CSV.",
+        ):
+            st.write(step)
+    elif index == 2:
+        st.title("Medição do áudio gravado")
+        a, b, c = st.columns(3)
+        a.metric("FFT efetiva", f"{result.before.n_fft:,}".replace(",", "."))
+        b.metric("Taxa de amostragem", f"{result.original.sample_rate:,} Hz".replace(",", "."))
+        c.metric("Duração", f"{result.original.duration:.2f} s")
+        st.write("A STFT mede a energia em frequência; a redução de ruído utiliza uma estimativa robusta do espectro de fundo.")
+    elif index == 3:
+        st.title("Filtragem e realce da fala")
+        fig = gains_figure(result)
+        st.pyplot(fig)
+        plt.close(fig)
+        st.write("Filtros passa-altas/passa-baixas, supressão espectral moderada e realce de presença. A resposta linear não descreve integralmente a máscara de ruído adaptativa.")
+        st.caption(f"Intensidade: {result.settings.strength:.2f}; Q: {result.settings.q:.2f}; proteção: {result.settings.ceiling_dbfs:.1f} dBFS.")
+    elif index == 4:
+        st.title("Experimento: escuta A/B")
+        a, b = st.columns(2)
+        with a:
+            st.write("**Gravação original**")
+            st.audio(before_audio, format="audio/wav")
+        with b:
+            st.write("**Voz tratada**")
+            st.audio(after_audio, format="audio/wav")
+        st.caption("Compare pausas e trechos de fala. Um resultado tecnicamente válido não garante melhora perceptiva em toda gravação.")
+    else:
+        st.title("Conclusões e limites")
+        st.write("O resultado mantém a duração, a amostragem e os canais; aplica filtragem, atenuação de ruído e proteção de pico.")
+        st.warning("O sistema não garante eliminação de eco, vozes concorrentes, ruídos impulsivos nem recuperação de clipping.")
+        st.write("A qualidade deve ser avaliada por escuta em ambiente controlado e, se necessário, com medidas específicas de fala.")
+    with st.expander("Perguntas e roteiro de defesa"):
+        st.write("Por que não usar o RMSE musical? Porque a distância a uma curva de potência não mede compreensão da fala.")
+        st.write("A redução de ruído remove tudo? Não. O algoritmo reduz parte do ruído estacionário e preserva intencionalmente alguma energia para evitar artefatos.")
+        st.write("Por que o gravador pode demorar a iniciar? O navegador solicita acesso ao microfone e inicializa o dispositivo; esse tempo não é controlado pelo filtro Python.")
+
+
 def render_presentation(result: Result, before_audio: bytes, after_audio: bytes):
+    if result.settings.target == "voice":
+        return render_voice_presentation(result, before_audio, after_audio)
     slide = st.radio("Etapas da apresentação", SLIDES, horizontal=True, key="presentation_slide")
     index = SLIDES.index(slide)
     st.caption(f"ETAPA {index + 1} DE 6 · ANÁLISE DE SINAIS")
