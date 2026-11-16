@@ -109,7 +109,7 @@ def equalize_voice(audio: Audio, settings: Settings) -> Result:
     rms_before = float(np.sqrt(np.mean(audio.samples ** 2)))
     rms_after = float(np.sqrt(np.mean(samples ** 2)))
     if settings.strength > 0 and rms_before > 1e-4 and rms_after > 1e-7:
-        samples *= min(2.0, max(1.0, 1.05 * rms_before / rms_after))
+        samples *= min(1.1, max(1.0, 1.05 * rms_before / rms_after))
     peak = float(np.max(np.abs(samples)))
     ceiling = 10 ** (settings.ceiling_dbfs / 20)
     scale = min(1.0, ceiling / peak) if peak else 1.0
