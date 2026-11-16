@@ -3,6 +3,7 @@ name: Validação do processamento
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,4 +22,5 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pip install -e .
+      - run: python -m compileall -q app.py signal_lab scripts tests
       - run: python -m pytest -q
