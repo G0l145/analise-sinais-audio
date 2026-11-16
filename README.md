@@ -4,6 +4,19 @@ Projeto para a disciplina **Análise de Sinais**: recebe um arquivo de áudio ou
 
 Inclui uma **apresentação ao professor em seis etapas**, com fórmulas, gráficos e um experimento reproduzível. A demonstração inicial é gerada pelo próprio programa; não exige baixar músicas.
 
+## Gráficos nítidos e atualização automática
+
+Na **Visão geral**, a curva-alvo ou a fonte do áudio pode ser alterada diretamente na barra lateral: quando já existe uma entrada de áudio válida, a análise, os números, o gráfico por bandas e as prévias A/B são **recalculados automaticamente**, sem precisar pressionar novamente o botão de processamento. Se faltar gravação, arquivo ou referência exigida, o aplicativo pede a entrada correspondente e não exibe gráficos antigos como se fossem atuais. Alterações de intensidade e parâmetros dos filtros ainda exigem clicar em **Analisar e equalizar** ou **Processar gravação**.
+
+Os gráficos utilizam maior resolução (165 dpi), linhas mais espessas, marcadores diferentes para **Antes** (círculos) e **Depois** (quadrados) e paletas próprias por modo:
+
+- **Curva suave:** azul (antes) e laranja (depois).
+- **Mesma potência por banda:** violeta (antes) e verde (depois).
+- **Áudio de referência:** vermelho (antes) e azul (depois).
+- **Voz nítida:** magenta (antes) e verde-petróleo (depois).
+
+Nos modos com alvo numérico, a linha **Alvo** permanece tracejada, em uma terceira cor. A mudança da paleta não altera o cálculo nem os ganhos de equalização; ela melhora apenas a comparação visual. Para voz, as medições são do sinal, não de uma curva-alvo musical.
+
 ## Tratamento de gravações de voz (nova opção)
 
 Na interface, escolha **Gravar áudio**. O gravador aparece na área principal (inclusive no celular), com amostragem solicitada de 16 kHz. Conceda a permissão do microfone no navegador, grave, encerre a captura e clique em **Analisar e equalizar**. A opção padrão para a gravação é **Voz nítida · limpeza e realce**; também está disponível para arquivos enviados.
