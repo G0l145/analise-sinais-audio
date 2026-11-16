@@ -100,3 +100,16 @@ python -m pytest -q tests/test_voice.py tests/test_recording.py tests/test_app.p
 ```
 
 As verificações automatizadas não medem a latência física do microfone nem substituem escuta humana. Anote navegador, dispositivo, duração, mensagens de erro e tempo de processamento.
+
+
+## Verificação visual da troca de modos (16/11/2026)
+
+1. Inicie o sistema e observe o gráfico da demonstração. Selecione **Curva suave** e depois **Mesma potência por banda**. Sem clicar em **Analisar e equalizar**, confirme que os números, a curva-alvo, a saída e a dupla de cores mudaram.
+2. Selecione **Gravar áudio**, grave e processe uma frase de 8–10 segundos. Altere **Voz nítida → Curva suave → Mesma potência por banda → Voz nítida**. Cada mudança deve atualizar o gráfico e as métricas automaticamente, sem novo clique.
+3. Confira as cores em cada modo e diferencie as curvas pelos símbolos (círculo antes, quadrado depois) e pelo tracejado do alvo.
+4. Troque para uma fonte sem áudio. O gráfico anterior não deve aparecer como resultado da nova fonte.
+5. Selecione **Áudio de referência** sem fornecer a referência: o aplicativo deve informar que o arquivo é necessário e não reutilizar o resultado anterior.
+6. Aumente o zoom do navegador para verificar legendas, bandas e eixos. Em celular, confira a rolagem, a legibilidade e os dois áudios A/B.
+7. Altere apenas a **intensidade da correção**: o sistema deve solicitar o clique no botão de processamento antes de atualizar o resultado (comportamento previsto).
+
+**Validação automatizada:** executar `python -m pytest -q` e verificar testes de interface (`tests/test_app.py`) e visualização (`tests/test_charts.py`). A validação num navegador e microfone físicos continua necessária para homologação.
