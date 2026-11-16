@@ -219,3 +219,20 @@ def test_switching_source_refreshes_when_audio_is_available_and_hides_old_result
     assert not app.exception
     assert len(app.tabs) == 0
     assert any("fonte" in info.value.lower() for info in app.info)
+
+
+
+def test_uploaded_audio_recomputes_when_target_switches_without_button(monkeypatch):
+    uploaded = microphone_wav()
+    monkeypatch.setattr("streamlit.file_uploader", lambda *args, **kwargs: uploaded)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    app.radio(key="audio_source").set_value("Enviar áudio").run()
+    assert not app.exception
+    assert app.session_state["result"].settings.target == "gentle"
+    before = app.session_state["result"]
+    app.selectbox(key="target_Enviar áudio").set_value("voice").run()
+    assert not app.exception
+    assert not app.error
+    assert app.session_state["result"] is not before
+    assert app.session_state["result"].settings.target == "voice"
+    assert any(metric.label == "RMS antes" for metric in app.metric)
