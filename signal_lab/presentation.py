@@ -5,7 +5,7 @@ import streamlit as st
 
 from .charts import band_figure, gains_figure
 from .dsp import Result
-from .report import improvement_percent
+from .report import improvement_percent, voice_measurements
 
 SLIDES = [
     "1 · Objetivo", "2 · Método", "3 · Análise", "4 · Correção", "5 · Experimento", "6 · Conclusão",
@@ -48,6 +48,12 @@ def render_voice_presentation(result: Result, before_audio: bytes, after_audio: 
         st.caption(f"Intensidade: {result.settings.strength:.2f}; Q: {result.settings.q:.2f}; proteção: {result.settings.ceiling_dbfs:.1f} dBFS.")
     elif index == 4:
         st.title("Experimento: escuta A/B")
+        measures = voice_measurements(result)
+        a, b, c = st.columns(3)
+        a.metric("RMS antes", "Silêncio" if measures["rms_before_dbfs"] is None else f'{measures["rms_before_dbfs"]:.2f} dBFS')
+        b.metric("RMS depois", "Silêncio" if measures["rms_after_dbfs"] is None else f'{measures["rms_after_dbfs"]:.2f} dBFS')
+        c.metric("Atenuação em trechos calmos", "Indisponível" if measures["low_energy_attenuation_db"] is None else f'{measures["low_energy_attenuation_db"]:.2f} dB')
+        st.caption("A atenuação é medida nas mesmas janelas de menor energia da entrada; não equivale a uma pontuação de inteligibilidade.")
         a, b = st.columns(2)
         with a:
             st.write("**Gravação original**")
