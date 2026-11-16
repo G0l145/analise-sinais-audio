@@ -135,7 +135,9 @@ def test_microphone_main_button_applies_updated_strength_and_presenter(monkeypat
     app = AppTest.from_file(str(APP), default_timeout=45).run()
     app.radio(key="audio_source").set_value("Gravar áudio").run()
     assert not app.exception
-    assert len(app.tabs) == 0  # Uma fonte diferente não deve redesenhar a análise antiga.
+    assert not app.exception
+    assert app.session_state["result"].settings.target == "voice"
+    assert app.session_state["signature"][0] == "Gravar áudio"  # Fonte com gravação disponível é atualizada automaticamente.
     app.slider(key="strength_Gravar áudio").set_value(0).run()
     app.button(key="microphone_process").click().run()
     assert not app.exception
@@ -193,3 +195,27 @@ def test_recording_target_switch_recalculates_voice_and_music_metrics(monkeypatc
         else:
             assert {"Erro antes", "Erro depois", "Redução do erro"} <= labels
         previous = result
+
+
+
+def test_switching_source_refreshes_when_audio_is_available_and_hides_old_results(monkeypatch):
+    recording = microphone_wav()
+    monkeypatch.setattr("streamlit.audio_input", lambda *args, **kwargs: recording)
+    app = AppTest.from_file(str(APP), default_timeout=45).run()
+    previous = app.session_state["result"]
+    app.radio(key="audio_source").set_value("Gravar áudio").run()
+    assert not app.exception
+    assert app.session_state["result"] is not previous
+    assert app.session_state["result"].settings.target == "voice"
+    assert app.session_state["signature"][0] == "Gravar áudio"
+
+    app.radio(key="audio_source").set_value("Demonstração pronta").run()
+    assert not app.exception
+    assert app.session_state["result"].settings.target == "reference"
+    assert app.session_state["signature"][0] == "Demonstração pronta"
+
+    # Fonte sem arquivo: não usar gráfico nem resultado de uma fonte anterior.
+    app.radio(key="audio_source").set_value("Enviar áudio").run()
+    assert not app.exception
+    assert len(app.tabs) == 0
+    assert any("fonte" in info.value.lower() for info in app.info)
