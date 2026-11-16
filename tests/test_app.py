@@ -74,6 +74,12 @@ def test_microphone_recording_equalizes_exports_and_detects_new_capture(monkeypa
     assert result.settings.target == "voice"
     assert result.error_before_db is None
     assert result.error_after_db is None
+    metrics = {metric.label: metric.value for metric in app.metric}
+    assert metrics["RMS antes"].endswith(" dBFS")
+    assert metrics["RMS depois"].endswith(" dBFS")
+    assert metrics["Variação RMS"].endswith(" dB")
+    assert metrics["Atenuação em trechos calmos"].endswith(" dB")
+    assert metrics["RMS antes"] != "—"
     assert result.original.sample_rate == 16_000
     assert result.original.samples.shape == result.processed.samples.shape
     assert np.isfinite(result.processed.samples).all()
