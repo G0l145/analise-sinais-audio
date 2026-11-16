@@ -137,7 +137,7 @@ def response_figure(result: Result):
     fig, (ax,) = figure()
     frequencies, gain = frequency_response(result)
     mask = frequencies >= 20
-    ax.semilogx(frequencies[mask], gain[mask], color=AFTER, linewidth=2, label="Cascata de filtros EQ")
+    ax.semilogx(frequencies[mask], gain[mask], color=AFTER, linewidth=2, label=("Filtros lineares de voz" if result.settings.target == "voice" else "Cascata de filtros EQ"))
     if result.attenuation_db < -1e-8:
         ax.semilogx(frequencies[mask], gain[mask] + result.attenuation_db, "--", color=TARGET,
                     label="EQ + atenuação global de pico")
